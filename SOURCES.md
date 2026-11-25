@@ -31,6 +31,14 @@ Cyber watch applies the same editorial method as Retail watch to significant sto
 - **EU Academy data leak.** The European Commission confirmed the platform impact at its 23 November 2026 briefing and said on 25 November that its investigation continued. [Commission briefing](https://audiovisual.ec.europa.eu/en/media/video/I-298395) · [Follow-up](https://audiovisual.ec.europa.eu/en/media/video/I-298552)
 - **Oyster photocard disruption.** The Register reported TfL’s response and the effect on travel and website access on 19 November 2026. [The Register’s reporting](https://www.theregister.com/security/2026/11/19/tfl-takes-oyster-photocard-website-offline-after-attackers-compromise-customer-accounts/5310985)
 
+## Weekly roundup and follow-ups
+
+The first weekly edition covers 19–25 November 2026. It links to the original NCSC advisory, vendor disclosure and ICO reporting guide. The edition and story follow-ups are edited in the dashboard HTML, with visible dates and source links. AI-assisted notes are checked against the cited sources, and suggested actions are labelled separately.
+
+- [NCSC advice on the rise in AI-assisted attacks, 24 November](https://www.ncsc.gov.uk/blogs/familiar-weaknesses-exploited-faster-defending-against-agentic-cyber-attacks)
+- [ICO personal data breach guide](https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide/)
+- [Cleverbridge disclosure and FAQ](https://grow.cleverbridge.com/incident-update)
+
 ## Release policy
 
 The release starts with an empty checked-in snapshot. Public datasets and briefing evidence are limited to CISA catalogue records. The collection workflow validates candidate data before artifact upload and validates it again when restoring data or staging the site. The reviewed UK guidance above is published as a static reference.

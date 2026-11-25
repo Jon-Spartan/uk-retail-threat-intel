@@ -61,6 +61,39 @@ def within_range(value, end):
     return type(value) in (int, float) and 0 <= value <= end
 
 
+def product_entry(vendor, product, source):
+    names = []
+    for value in (vendor, product):
+        if not isinstance(value, str):
+            return None
+        name = " ".join(value.split())
+        if (not 1 <= len(name) <= 120 or name.casefold() in {"n/a", "unknown", "none", "unspecified", "not provided"}
+                or not any(char.isalnum() for char in name)
+                or any(ord(char) < 32 or ord(char) == 127 or char in "<>" for char in name)):
+            return None
+        names.append(name)
+    return dict(vendor=names[0], product=names[1], source=source)
+
+
+def cna_products(cna):
+    affected = cna.get("affected")
+    products = []
+    if isinstance(affected, list):
+        for entry in affected[:100]:
+            if not isinstance(entry, dict):
+                continue
+            versions = entry.get("versions")
+            declares_affected = entry.get("defaultStatus") == "affected" or (
+                isinstance(versions, list) and any(isinstance(version, dict) and version.get("status") == "affected"
+                                                   for version in versions[:100])
+            )
+            if declares_affected:
+                product = product_entry(entry.get("vendor"), entry.get("product"), "cve_list")
+                if product and product not in products:
+                    products.append(product)
+    return products[:12]
+
+
 def parse_cve_record(payload, cve):
     if (not isinstance(payload, dict) or payload.get("dataType") != "CVE_RECORD"
             or not isinstance(payload.get("dataVersion"), str)
@@ -78,6 +111,10 @@ def parse_cve_record(payload, cve):
     cna = containers.get("cna") if isinstance(containers, dict) else None
     if not isinstance(cna, dict):
         return None
+    result = {"state": "published", "cvss": None}
+    products = cna_products(cna)
+    if products:
+        result["affected_products"] = products
     # Prefer the primary CNA's base score. Third-party enrichment is not inferred as CNA evidence.
     metrics = cna.get("metrics")
     if isinstance(metrics, list):
@@ -91,8 +128,9 @@ def parse_cve_record(payload, cve):
                         and within_range(value.get("baseScore"), 10)):
                     scores.append(value["baseScore"])
             if scores:
-                return {"state": "published", "cvss": {"version": version, "score": max(scores)}}
-    return {"state": "published", "cvss": None}
+                result["cvss"] = {"version": version, "score": max(scores)}
+                break
+    return result
 
 
 def parse_epss(data, requested, assessed_on):
@@ -187,15 +225,21 @@ def calculate_priority(vulnerabilities, relevance, source_tier, timestamp, asses
 
 def classify_record(record, kev_catalogue, cvss_records, epss, assessed_at):
     vulnerabilities = []
+    products = list(record.get("affected_products", []))
     for cve in record["reported_cves"]:
         primary = cvss_records.get(cve)
         listed = cve in kev_catalogue if kev_catalogue is not None else None
         if (primary and primary["state"] == "rejected") or not (primary or listed):
             continue
+        for product in (primary or {}).get("affected_products", []):
+            if product not in products:
+                products.append(product)
         vulnerabilities.append({
             "id": cve, "evidence": "cve_list" if primary else "kev_catalogue",
             "kev": listed, "cvss": primary["cvss"] if primary else None, "epss": epss.get(cve),
         })
+    if products:
+        record["affected_products"] = products[:12]
     relevance, subsector = retail_context(record["title"] + " " + record.get("summary", ""))
     source_tier = record_source_tier(record)
     severity, exploitation, confidence, components = calculate_priority(

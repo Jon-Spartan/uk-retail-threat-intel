@@ -95,7 +95,8 @@ class CollectionWorkflowTests(unittest.TestCase):
 
     def test_default_collection_and_staging_use_only_approved_sources(self):
         now = datetime.now(timezone.utc) - timedelta(hours=1)
-        fixture = {"vulnerabilities": [{"cveID": CVE, "dateAdded": now.date().isoformat()}]}
+        fixture = {"vulnerabilities": [{"cveID": CVE, "dateAdded": now.date().isoformat(),
+                                           "vendorProject": "Example Vendor", "product": "Gateway"}]}
         with TemporaryDirectory() as directory, chdir(directory), \
                 patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "RUN_MODE": "flash"}, clear=True), \
                 patch.object(pipeline, "download_json", return_value=fixture), \
@@ -106,6 +107,9 @@ class CollectionWorkflowTests(unittest.TestCase):
             files = validate_release_data(data)
             records = read_json(data / "threats.json")
             self.assertEqual([record["url"] for record in records], [kev_article_url(CVE)])
+            self.assertEqual(records[0]["affected_products"], [
+                {"vendor": "Example Vendor", "product": "Gateway", "source": "cisa_kev"}
+            ])
             stage_site(data, Path("staged-site"), ROOT)
             public = {file.relative_to("staged-site").as_posix()
                       for file in Path("staged-site").rglob("*") if file.is_file()}

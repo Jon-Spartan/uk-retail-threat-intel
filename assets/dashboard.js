@@ -26,6 +26,14 @@ try {
   }
 } catch (e) {}
 
+const visitStorageKey = 'cti_last_collection_visit';
+let lastCollectionVisit = null;
+try {
+  const saved = Number(localStorage.getItem(visitStorageKey));
+  if (saved > 0 && saved <= Date.now()) lastCollectionVisit = saved;
+} catch {}
+let triageCoverage = null;
+
 function textElement(tag, text, className) {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -152,17 +160,91 @@ function isPeakTradingItem(item) {
   );
 }
 
-// Helper: Checks if an item matches the user's private browser tech stack
+function matchWords(value) {
+  return (String(value ?? '').normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).join(' ');
+}
+
 function getTechStackMatches(item) {
-  if (!item || !userTechStack || userTechStack.length === 0) return [];
-  const text = `${item.title || ''} ${item.summary || ''} ${(item.tags || []).join(' ')} ${(item.cves || []).join(' ')} ${item.source || ''}`.toLowerCase();
-  return userTechStack.filter(keyword => {
-    const kw = keyword.toLowerCase().trim();
-    if (!kw) return false;
-    // Match whole word or exact token where feasible
-    const escaped = kw.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-    return new RegExp(`\\b${escaped}\\b`, 'i').test(text) || text.includes(kw);
+  if (!item || !userTechStack.length) return [];
+  const products = Array.isArray(item.affected_products) ? item.affected_products : [];
+  const context = ' ' + matchWords([item.title, item.summary, ...(item.tags || []), ...(item.cves || [])].join(' ')) + ' ';
+  return userTechStack.flatMap(entry => {
+    const terms = entry.split('|').map(value => ({keyword: value.trim(), words: matchWords(value)}))
+      .filter(term => term.words);
+    for (const term of terms) {
+      const phrase = ' ' + term.words + ' ';
+      const product = products.find(product => product && ['cisa_kev', 'cve_list'].includes(product.source)
+        && typeof product.vendor === 'string' && typeof product.product === 'string'
+        && (' ' + matchWords(product.vendor + ' ' + product.product) + ' ').includes(phrase));
+      if (product) return [{keyword: term.keyword, product}];
+    }
+    // Keep older topic and CVE preferences useful with an explicitly weaker label.
+    const topic = terms.find(term => context.includes(' ' + term.words + ' '));
+    return topic ? [{keyword: topic.keyword}] : [];
   });
+}
+
+function newSinceVisit(item) {
+  if (!triageCoverage || !lastCollectionVisit || item.carried_forward) return false;
+  const observed = Date.parse(item.first_seen_at);
+  return Number.isFinite(observed) && observed > lastCollectionVisit && observed <= Date.now();
+}
+
+function describeProductMatch(match) {
+  const product = match.product;
+  const source = product.source === 'cisa_kev' ? 'CISA KEV' : 'the CVE record';
+  const name = matchWords(product.product).startsWith(matchWords(product.vendor) + ' ')
+    ? product.product : product.vendor + ' ' + product.product;
+  return source + ' lists ' + name + '. Check your version against the vendor advisory.';
+}
+
+function renderTriage() {
+  const list = document.getElementById('triageItems');
+  const note = document.getElementById('triageStatus');
+  if (!list || !note) return;
+  list.replaceChildren();
+  if (!triageCoverage) {
+    note.textContent = 'The shortlist is unavailable until a recent collection can be verified.';
+    return;
+  }
+  const count = activeThreats.filter(newSinceVisit).length;
+  const freshness = lastCollectionVisit ? count + ' new since your last visit in this browser.'
+    : 'New items will be marked after this browser saves a previous visit.';
+  const ranked = activeThreats.flatMap(item => {
+    const url = safeHttpUrl(item.url);
+    const evidence = priorityEvidence(item);
+    if (!url || !evidence || item.carried_forward || !evidence.vulnerabilities.length) return [];
+    return [{item, url, evidence, product: getTechStackMatches(item).find(match => match.product),
+      recent: newSinceVisit(item)}];
+  }).sort((left, right) =>
+    Number(Boolean(right.product)) - Number(Boolean(left.product)) ||
+    Number(right.recent) - Number(left.recent) ||
+    right.evidence.score - left.evidence.score);
+  const coverage = triageCoverage === 'partial' ? 'Coverage is incomplete. ' : '';
+  note.textContent = coverage + (ranked.length ? freshness : 'No verified items to review in this collection. ' + freshness);
+
+  for (const {item, url, evidence, product, recent} of ranked.slice(0, 3)) {
+    const card = document.createElement('article');
+    card.className = 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80';
+    const reasons = [];
+    if (product) reasons.push('My Stack product match');
+    if (recent) reasons.push('New since your last visit');
+    if (evidence.exploitation === 'confirmed') reasons.push('Exploitation confirmed');
+    if (!reasons.length) reasons.push('Verified CVE evidence');
+    const link = textElement('a', 'Verify with ' + item.source, 'mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const action = product ? describeProductMatch(product)
+      : 'Check whether you use the affected product, then verify versions and fixes in the vendor advisory.';
+    card.append(
+      textElement('p', reasons.join(' · '), 'text-xs font-medium text-sky-700 dark:text-sky-300'),
+      textElement('h3', item.title, 'font-semibold leading-tight'),
+      textElement('p', action, 'text-sm text-slate-600 dark:text-slate-300'),
+      link
+    );
+    list.append(card);
+  }
 }
 
 // =========================================================================
@@ -191,14 +273,21 @@ function renderFeedItems(items) {
       textElement('span', label, 'px-2 py-0.5 rounded text-[10px] font-semibold border ' + colors)
     );
 
+    const product = matches.find(match => match.product);
     if (matches.length) {
-      badge('🎯 IN YOUR STACK (' + matches.slice(0, 2).join(', ') + ')',
+      const labels = matches.filter(match => Boolean(match.product) === Boolean(product));
+      badge((product ? 'PRODUCT MATCH (' : 'TOPIC MATCH (') + labels.slice(0, 2).map(match => match.keyword).join(', ') + ')',
         'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800');
     }
     badge(severity && severity !== 'UNKNOWN' ? 'CVSS ' + severity : 'CVSS unassessed', critical
       ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900'
       : 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900');
-    if (item.is_new) badge('NEW', 'bg-sky-500 text-white border-transparent');
+    const stackNote = field('stack-match');
+    if (product) stackNote.textContent = describeProductMatch(product);
+    else if (matches.length) stackNote.textContent = 'Matched terms in the report. Check product applicability at the source.';
+    else stackNote.remove();
+    if (newSinceVisit(item)) badge('NEW SINCE YOUR VISIT', 'bg-sky-500 text-white border-transparent');
+    else if (item.is_new) badge('NEW', 'bg-sky-500 text-white border-transparent');
     if (isKevItem(item)) {
       badge('CISA KEV · exploitation confirmed', 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800');
     }
@@ -279,6 +368,7 @@ function updateMetricsCounters() {
 // 5. FILTERING & SEARCH CONTROLLER
 // =========================================================================
 function applyFilters() {
+  renderTriage();
   const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
   const severityVal = document.getElementById('severitySelect')?.value || 'ALL';
 
@@ -755,6 +845,11 @@ async function fetchThreatTelemetry(isManual = false) {
     const collection = metadata?.collection;
     const updatedAt = collection?.data_updated_at;
     const age = dateAge(updatedAt);
+    triageCoverage = items !== null && age <= 90 * 60 * 1000 &&
+      ['current', 'partial'].includes(collection?.state) ? collection.state : null;
+    if (triageCoverage) {
+      try { localStorage.setItem(visitStorageKey, String(Date.now())); } catch {}
+    }
     if (collection?.state === 'failed') {
       setCollectionStatus('FAILED', hasCollection
         ? 'Collection failed. Showing the previous snapshot, which may be stale.'
@@ -783,6 +878,7 @@ async function fetchThreatTelemetry(isManual = false) {
       showFlashAlert(null);
     }
   } catch {
+    triageCoverage = null;
     const briefingStatus = document.getElementById('briefingLastRun');
     if (briefingStatus) briefingStatus.textContent = 'Briefing status could not be loaded';
     setCollectionStatus('LOAD FAILED', hasCollection

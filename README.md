@@ -46,6 +46,14 @@ No environment variables are required for the initial preview, tests or collecti
 - The dashboard keeps technical severity, sector priority, exploitation, and confidence separate. Retail relevance is assessed from public reporting cues. ATT&CK technique references require a source link. See [the scoring methodology](SCORING.md) for factor weights and interpretation.
 - The dashboard labels stale, partial, failed and unavailable data. During a partial collection, recent reports from failed sources can be marked as retained. A total failure retains the prior snapshot. Reports in STIX and RSS link back to publishers. Source URLs are observables and must be treated as citations.
 
+## Using the dashboard
+
+**Start here** shows up to three recent records with verified evidence and a source link. It puts structured My Stack matches first, then items first observed by the platform since this browser’s last successful visit, then the existing sector priority score. The shortlist is unavailable when collection data is stale or cannot be verified. Its visit timestamp stays in the browser.
+
+**My Stack** checks vendor and product names declared by CISA KEV or the primary CVE record. Use a vertical bar to save aliases in a single preference. Existing terms can still match report text as topic matches. Verify affected versions and fixes in the vendor advisory.
+
+**Weekly roundup** is a dated, manually maintained selection of key developments. Editorial updates cite the change or clarify when a disclosure was last checked. Neither requires Gemini or adds an entry to the automated feed.
+
 ## Privacy and security
 
 - My Stack preferences stay in this browser's local storage. Filtering runs on the page, and application requests do not send the preferences. **Clear My Stack** deletes the stored preferences while preserving the theme. The flash dismissal is stored for the browser session.

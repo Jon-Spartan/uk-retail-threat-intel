@@ -22,7 +22,7 @@ from briefings import (
 )
 from classification import (
     EPSS_URL, MAX_CVE_LOOKUPS, MAX_EPSS_LOOKUPS, classify_record, cve_source_url,
-    extract_attack_refs, parse_cve_record, parse_epss, qualifies_for_flash, sanitize_archive,
+    extract_attack_refs, parse_cve_record, parse_epss, product_entry, qualifies_for_flash, sanitize_archive,
 )
 from delivery import deliver_outbox, queue_outbox
 from feed_transport import FeedError, download_json, download_source
@@ -162,6 +162,7 @@ def fetch_cisa_kev_alerts(cutoff_date, seen_urls, assessed_at):
             product = vuln.get("product") or "Product not provided"
             description = clean_feed_text(vuln.get("shortDescription") or "")
             ref_url = kev_article_url(cve_id)
+            declared = product_entry(vuln.get("vendorProject"), vuln.get("product"), "cisa_kev")
             articles.append({
                 "id": f"cisa-kev-{cve_id.lower().replace('-', '_')}",
                 "title": f"CISA KEV addition: {cve_id} in {vendor} {product}",
@@ -173,6 +174,7 @@ def fetch_cisa_kev_alerts(cutoff_date, seen_urls, assessed_at):
                 "is_flash": False,
                 "is_peak_trading": bool(PEAK_TRADING_PATTERN.search(description)),
                 "reported_cves": [cve_id],
+                **({"affected_products": [declared]} if declared else {}),
                 "attack_refs": [],
                 "tags": ["CISA catalogue entry"],
                 "summary": description[:350],

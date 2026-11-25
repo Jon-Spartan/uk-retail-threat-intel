@@ -76,6 +76,28 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual([cvss_severity(value) for value in (None, 0, 0.1, 4, 7, 9)],
                          ["UNKNOWN", "NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"])
 
+    def test_only_declared_cna_products_are_published(self):
+        payload = {"dataType": "CVE_RECORD", "dataVersion": "5.2",
+                   "cveMetadata": {"cveId": A, "state": "PUBLISHED"},
+                   "containers": {"cna": {"affected": [
+                       {"vendor": "Example Vendor", "product": "Edge Service",
+                        "versions": [{"version": "1", "status": "affected"}]},
+                       {"vendor": "Example Vendor", "product": "Independent Product",
+                        "versions": [{"version": "1", "status": "unaffected"}]},
+                       {"vendor": "n/a", "product": "Placeholder", "defaultStatus": "affected"},
+                       {"vendor": "Vendor", "product": "<bad>", "defaultStatus": "affected"},
+                   ]}, "adp": [{"affected": [{"vendor": "Other", "product": "Third-party",
+                                               "defaultStatus": "affected"}]}]}}
+        primary = parse_cve_record(payload, A)
+        expected = [{"vendor": "Example Vendor", "product": "Edge Service", "source": "cve_list"}]
+        self.assertEqual(primary["affected_products"], expected)
+        record = classify_record(article(), set(), {A: primary}, {}, NOW)
+        self.assertEqual(record["affected_products"], expected)
+        validate_records([record])
+        record["affected_products"][0]["source"] = "unverified"
+        with self.assertRaisesRegex(ValueError, "Invalid affected product evidence"):
+            validate_records([record])
+
     def test_epss_staleness_per_cve_and_conflicts(self):
         day = NOW.date()
         rows = [

@@ -270,7 +270,7 @@ test('editorial sections present dated source links and leave the live feed acce
     assert.ok(articles.length > 0);
     for (const article of articles) {
       assert.ok((await article.getByRole('heading', {level: 3}).textContent()).trim());
-      assert.match(await article.locator('time').getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
+      assert.match(await article.locator('time').first().getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
       const links = await article.getByRole('link').all();
       assert.ok(links.length > 0);
       for (const link of links) {
@@ -287,5 +287,48 @@ test('editorial sections present dated source links and leave the live feed acce
   await retail.getByRole('link', {name: 'Jump to the live feed'}).click();
   assert.equal(new URL(page.url()).hash, '#live-intelligence');
   assert.deepEqual(await titles(page).allTextContents(), [report.title]);
+  board.assertQuiet();
+});
+
+test('triage prefers declared product matches and newly observed records, withholds stale actions and keeps state local', {timeout: 30000}, async t => {
+  const evidence = {version: 1, score: 75, components: {}, exploitation: 'confirmed',
+    vulnerabilities: [{id: 'CVE-2024-12345', kev: true}]};
+  const recent = {...report, id: 'recent-item', title: 'Recent supplier advisory', first_seen_at: hoursAgo(1),
+    classification: evidence};
+  const matched = {...second, id: 'matched-item', title: 'Gateway advisory',
+    first_seen_at: hoursAgo(8), classification: {...evidence, score: 60},
+    affected_products: [{vendor: 'Example Vendor', product: 'Edge Gateway', source: 'cisa_kev'}]};
+  const priority = {...report, id: 'priority-item', title: 'High priority advisory',
+    first_seen_at: hoursAgo(12), classification: {...evidence, score: 99}};
+  const retained = {...report, id: 'retained-item', title: 'Retained advisory',
+    first_seen_at: hoursAgo(1), carried_forward: true, classification: evidence};
+  const board = await dashboard(t, {
+    'data/threats.json': [priority, retained, recent, matched],
+    'data/intelligence_status.json': {collection: collection('current')},
+    'data/flash_alert.json': 404
+  });
+  const {page, requests, responses} = board;
+  await titles(page).first().waitFor();
+  await page.evaluate(() => {
+    localStorage.setItem('cti_last_collection_visit', String(Date.now() - 4 * 3600000));
+    localStorage.setItem('cti_my_tech_stack', JSON.stringify(['private-fixture-alias | edge gateway']));
+  });
+  await page.reload({waitUntil: 'domcontentloaded'});
+  const triage = page.getByRole('region', {name: 'Start here'});
+  await triage.getByText('1 new since your last visit in this browser.', {exact: true}).waitFor();
+  assert.deepEqual(await triage.getByRole('heading', {level: 3}).allTextContents(),
+    [matched.title, recent.title, priority.title]);
+  await triage.getByText('CISA KEV lists Example Vendor Edge Gateway. Check your version against the vendor advisory.',
+    {exact: true}).waitFor();
+  await page.getByText('PRODUCT MATCH (edge gateway)', {exact: true}).waitFor();
+  assert.ok(requests.every(request => ![request.url, request.body, JSON.stringify(request.headers)]
+    .some(value => value?.includes('private-fixture-alias'))));
+
+  await page.getByRole('region', {name: 'Weekly roundup'}).getByText(/19–25 November 2026/).waitFor();
+  await page.getByRole('link', {name: 'Commission follow-up'}).waitFor();
+  responses['data/intelligence_status.json'] = {collection: collection('current', 4)};
+  await sync(page, 'STALE');
+  await triage.getByText(/shortlist is unavailable/).waitFor();
+  assert.equal(await triage.getByRole('article').count(), 0);
   board.assertQuiet();
 });

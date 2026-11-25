@@ -19,7 +19,7 @@ from briefings import (
     KEV_PUBLISHER, LEGACY_STATUS_FIELDS, STATUS_FIELDS, discard_legacy_briefings, kev_article_url,
     load_briefing_pair, production_cve, utc_time,
 )
-from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid
+from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid, product_entry
 
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
@@ -113,7 +113,7 @@ def validate_records(records, allow_legacy=False, require_identity=False):
         require(isinstance(record, dict), "Expected a collection record object.")
         legacy = allow_legacy and "classification" not in record
         fields = (RECORD_TEXT - ARCHIVE_FIELDS) | RECORD_FLAGS | {
-            "cves", "reported_cves", "tags", "attack_refs", "_timestamp", "classification",
+            "cves", "reported_cves", "tags", "attack_refs", "_timestamp", "classification", "affected_products",
         }
         if legacy:
             fields |= ARCHIVE_FIELDS
@@ -149,6 +149,13 @@ def validate_records(records, allow_legacy=False, require_identity=False):
                     f"Invalid record field: {key}")
         require(all(re.fullmatch(r"CVE-[0-9]{4}-[0-9]{4,}", value, re.IGNORECASE)
                     for value in record.get("cves", [])), "Invalid CVE identifier format.")
+        products = record.get("affected_products", [])
+        require(isinstance(products, list) and len(products) <= 12 and all(
+            isinstance(item, dict) and item.get("source") in ("cisa_kev", "cve_list")
+            and (item["source"] != "cisa_kev" or record["source"] == KEV_PUBLISHER)
+            and item == product_entry(item.get("vendor"), item.get("product"), item["source"])
+            for item in products
+        ), "Invalid affected product evidence.")
         timestamp = record.get("_timestamp", 0)
         require(type(timestamp) in (int, float) and math.isfinite(timestamp), "Invalid record timestamp.")
         epss = record.get("epss")

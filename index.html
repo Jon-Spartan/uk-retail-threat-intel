@@ -110,6 +110,17 @@
     <!-- FEED TAB CONTENT -->
     <div id="tabFeedContent" class="space-y-6">
 
+      <section id="start-here" aria-labelledby="triageTitle" class="space-y-3 rounded-2xl border border-sky-300/50 bg-sky-50/70 p-4 dark:border-sky-900 dark:bg-sky-950/30 sm:p-5">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 id="triageTitle" class="text-xl font-bold tracking-tight">Start here</h2>
+            <p id="triageStatus" role="status" class="text-sm text-slate-600 dark:text-slate-300">Checking for recent intelligence.</p>
+          </div>
+          <a href="#live-intelligence" class="text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">View the full feed</a>
+        </div>
+        <div id="triageItems" class="grid gap-3 md:grid-cols-3"></div>
+      </section>
+
       <section id="retail-watch" aria-labelledby="retailWatchTitle" class="space-y-3">
         <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <div>
@@ -118,6 +129,7 @@
           </div>
           <nav aria-label="Jump to dashboard sections" class="flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-sky-700 dark:text-sky-300">
             <a href="#cyber-watch" class="underline underline-offset-4">Jump to Cyber watch</a>
+            <a href="#weekly-roundup" class="underline underline-offset-4">Weekly roundup</a>
             <a href="#live-intelligence" class="underline underline-offset-4">Jump to the live feed</a>
           </nav>
         </div>
@@ -144,6 +156,9 @@
             <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">Payment data after checkout</h3>
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Ask payment providers which card data they retain and how they notify affected customers.</p>
+            <p class="border-l-2 border-emerald-400 pl-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <strong>Disclosure checked · <time datetime="2026-11-25">25 November</time></strong> The provider’s FAQ says card security codes were involved in a minority of cases. Affected customers should check their own notification for details.
+            </p>
             <a href="https://grow.cleverbridge.com/incident-update" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Cleverbridge incident update</a>
           </article>
         </div>
@@ -172,6 +187,10 @@
             <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">EU Academy goes offline after a data leak</h3>
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The European Commission confirmed that a wider cyber incident exposed personal data from its learning platform. It suspended public access while it assessed how many users were affected.</p>
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Takeaway</strong> Plan how to reach users through a separate channel when the service they normally sign in to is unavailable.</p>
+            <p class="border-l-2 border-sky-400 pl-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <strong>Update · <time datetime="2026-11-25">25 November</time></strong> The Commission said the investigation was still open and gave no new assessment of its scope.
+              <a href="https://audiovisual.ec.europa.eu/en/media/video/I-298552" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">Commission follow-up</a>
+            </p>
             <a href="https://audiovisual.ec.europa.eu/en/media/video/I-298395" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">European Commission briefing</a>
           </article>
 
@@ -183,6 +202,32 @@
             <a href="https://www.theregister.com/security/2026/11/19/tfl-takes-oyster-photocard-website-offline-after-attackers-compromise-customer-accounts/5310985" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">The Register’s TfL reporting</a>
           </article>
         </div>
+      </section>
+
+      <section id="weekly-roundup" aria-labelledby="weeklyRoundupTitle" class="scroll-mt-32 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80 sm:p-5 lg:scroll-mt-24">
+        <div>
+          <h2 id="weeklyRoundupTitle" class="text-xl font-bold tracking-tight">Weekly roundup</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Curated edition · <time datetime="2026-11-19">19</time>–<time datetime="2026-11-25">25 November 2026</time></p>
+        </div>
+        <ul class="grid gap-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300 md:grid-cols-3">
+          <li>
+            <h3 class="font-semibold text-slate-900 dark:text-white">Check internet-facing services</h3>
+            <p>The NCSC reported an increase in AI-assisted attacks and urged defenders to revisit basic controls such as account permissions and access to public-facing services.</p>
+            <a href="https://www.ncsc.gov.uk/blogs/familiar-weaknesses-exploited-faster-defending-against-agentic-cyber-attacks" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">NCSC guidance, 24 November</a>
+          </li>
+          <li>
+            <h3 class="font-semibold text-slate-900 dark:text-white">Plan for customer notifications</h3>
+            <p>Cleverbridge’s update explains what it has confirmed about payment data. The ICO’s breach guide helps teams work through what to assess, record and report when personal data is involved.</p>
+            <a href="https://grow.cleverbridge.com/incident-update" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">Cleverbridge disclosure</a>
+            <span aria-hidden="true"> · </span><a href="https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide/" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">ICO breach guide</a>
+          </li>
+          <li>
+            <h3 class="font-semibold text-slate-900 dark:text-white">Keep an alternative route open</h3>
+            <p>Disruption at FinCEN affected some filings, while people could still travel on their existing Oyster photocards during the portal outage. Both show the value of explaining what still works.</p>
+            <a href="#cyber-watch-fincen" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">FinCEN story</a>
+            <span aria-hidden="true"> · </span><a href="#cyber-watch-oyster" class="text-sky-700 underline underline-offset-4 dark:text-sky-300">Oyster story</a>
+          </li>
+        </ul>
       </section>
 
       <!-- SECTOR METRIC CARDS ROW -->
@@ -444,7 +489,7 @@
           <span class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500 font-bold text-base">🎯</span>
           <div>
             <h3 class="font-bold text-base text-slate-900 dark:text-white">My Stack Watchlist</h3>
-            <p class="text-xs text-slate-400">Match public intelligence against your chosen keywords</p>
+            <p class="text-xs text-slate-400">Check public product names and report topics against your watchlist</p>
           </div>
         </div>
         <button data-action="closeTechStackModal" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-sm">✕</button>
@@ -461,10 +506,11 @@
       <div class="space-y-3 flex-1 overflow-y-auto pr-1">
         <div>
           <label for="techStackInput" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Add Technology, Vendor or Appliance Keyword:
+            Add a product, vendor, alias or topic
           </label>
+          <p id="techStackAliases" class="mb-1.5 text-xs text-slate-600 dark:text-slate-400">Separate aliases for the same product with <code>|</code>.</p>
           <div class="flex gap-2">
-            <input type="text" id="techStackInput" placeholder="e.g. point of sale" class="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="techStackInput" aria-describedby="techStackAliases" placeholder="e.g. point of sale" class="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <button data-action="addTechStackTag" class="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">Add</button>
           </div>
         </div>
@@ -515,6 +561,7 @@
         </div>
         <h3 data-field="title" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug tracking-tight mb-2"></h3>
         <p data-field="summary" class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3"></p>
+        <p data-field="stack-match" class="text-xs text-indigo-700 dark:text-indigo-300"></p>
         <div data-field="advisory-box" class="mt-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
           <span class="font-bold text-slate-800 dark:text-slate-200">Recommendation</span>
           <span data-field="advisory"></span>
