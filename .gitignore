@@ -1,0 +1,29 @@
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+
+# Legacy notification state copied from an older installation
+sent_flashes.txt
+last_briefing_date.txt
+daily_briefing_delivered.txt
+weekly_briefing_delivered.txt
+pending_flashes.json
+notifications.sqlite3*
+.intelligence-run.lock
+
+# Legacy, unvalidated firewall exports
+/data/edl_domains.txt
+/data/edl_ips.txt
+
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local build and publication staging
+node_modules/
+public-site/
+.candidate/

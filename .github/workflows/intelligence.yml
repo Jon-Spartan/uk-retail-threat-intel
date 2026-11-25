@@ -1,0 +1,137 @@
+name: Collect and publish UK retail intelligence
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Briefing schedule to run
+        type: choice
+        options: [daily, weekly]
+        default: daily
+      force_briefing:
+        description: Generate the daily briefing outside the morning window
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: intelligence-${{ github.ref }}
+  queue: max
+
+jobs:
+  collect:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Find the previous validated dataset
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          runs=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/intelligence.yml/runs" \
+            -f branch="$DEFAULT_BRANCH" -f status=completed -F per_page=20 --jq '.workflow_runs[].id')
+          for run in $runs; do
+            artifact=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts" \
+              -f name=validated-intelligence --jq 'first(.artifacts[] | select(.expired == false) | .id) // empty')
+            if [[ "$artifact" =~ ^[0-9]+$ ]]; then
+              printf 'run=%s\nartifact=%s\n' "$run" "$artifact" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done
+      - name: Download the previous validated dataset
+        if: steps.previous.outputs.artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.previous.outputs.run }}
+          artifact-ids: ${{ steps.previous.outputs.artifact }}
+          path: ${{ runner.temp }}/previous-intelligence
+      - name: Restore the previous dataset
+        if: steps.previous.outputs.artifact != ''
+        run: python -m scripts.publication restore-data "$RUNNER_TEMP/previous-intelligence" data
+      - name: Install the locked Python dependencies
+        run: python -m pip install --require-hashes --no-deps -r requirements.lock.txt
+      - name: Collect intelligence
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          RUN_MODE: ${{ inputs.mode || 'daily' }}
+          FORCE_BRIEFING: ${{ inputs.force_briefing && 'true' || 'false' }}
+        run: python threat_intel_pipeline.py
+      - name: Stage candidate data
+        run: python -m scripts.publication stage-data data "$RUNNER_TEMP/intelligence-candidate"
+      - name: Scan candidate data for secrets
+        run: bash scripts/scan-secrets.sh dir "$RUNNER_TEMP/intelligence-candidate"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: intelligence-candidate
+          path: ${{ runner.temp }}/intelligence-candidate
+          if-no-files-found: error
+          retention-days: 1
+
+  validate:
+    needs: collect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: intelligence-candidate
+          path: ${{ runner.temp }}/intelligence-candidate
+      - name: Validate data and stage the public site
+        run: python -m scripts.publication stage-site "$RUNNER_TEMP/intelligence-candidate" public-site
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: validated-intelligence
+          path: public-site/data
+          if-no-files-found: error
+          retention-days: 14
+      - name: Package the Pages artifact
+        if: vars.ENABLE_PAGES_PUBLICATION == 'true'
+        run: tar --dereference --hard-dereference -cf "$RUNNER_TEMP/artifact.tar" -C public-site .
+      - name: Upload the Pages artifact
+        if: vars.ENABLE_PAGES_PUBLICATION == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    if: vars.ENABLE_PAGES_PUBLICATION == 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the validated Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

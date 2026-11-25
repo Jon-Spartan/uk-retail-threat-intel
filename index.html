@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UK Retail Cyber Threat Intelligence (CTI) Hub</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <script src="./assets/theme.js"></script>
+  <link rel="stylesheet" href="./assets/dashboard.css">
+  <script src="./assets/dashboard.js" defer></script>
+</head>
+<body class="min-h-screen flex flex-col antialiased bg-slate-50 text-slate-800 dark:bg-[#07090e] dark:text-slate-100 selection:bg-sky-500 selection:text-white">
+
+  <!-- EMERGENCY FLASH THREAT BANNER (DYNAMICALLY SURFACED IF FLASH ALERT EXISTS) -->
+  <aside id="flashAlertBanner" class="hidden border-b border-rose-500/50 bg-rose-500/10 text-rose-900 dark:text-rose-200 backdrop-blur px-4 py-3 sticky top-0 z-50 transition-all flash-pulse">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="flex h-3 w-3 relative flex-shrink-0">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
+        </span>
+        <div class="text-xs sm:text-sm">
+          <span class="font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mr-2">🚨 FLASH THREAT ALERT:</span>
+          <span id="flashAlertTitle" class="font-medium text-slate-900 dark:text-white"></span>
+          <span class="mx-2 hidden md:inline text-rose-400 dark:text-rose-600">•</span>
+          <span id="flashAlertAdvisory" class="text-rose-800 dark:text-rose-300 font-mono text-xs hidden md:inline"></span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+        <a id="flashAlertLink" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition flex items-center gap-1 shadow-sm">
+          <span>Open Advisory</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+        <button data-action="dismissFlashAlert" class="p-1 rounded text-rose-700 dark:text-rose-400 hover:bg-rose-200/50 dark:hover:bg-rose-950/50 text-xs" title="Dismiss this session">✕</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- TOP HEADER & STATUS BAR -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/80 backdrop-blur sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-9 w-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              UK Retail <span class="text-sky-600 dark:text-sky-400 font-mono text-xs uppercase px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950 border border-sky-300 dark:border-sky-800">Threat Intel</span>
+            </h1>
+            <!-- Interactive Live Sync Button -->
+            <button id="liveSyncBtn" data-action="manualSync" title="Click to check for newest threats right now" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60 hover:bg-emerald-200 dark:hover:bg-emerald-900 transition active:scale-95 cursor-pointer">
+              <span id="syncPulseDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+              <svg id="syncSpinner" class="w-3 h-3 animate-spin hidden text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+              <span id="syncStatusText">LOADING</span>
+              <span id="syncTimeAgo" class="text-[10px] opacity-75 font-mono ml-0.5 hidden sm:inline"></span>
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Automated Scraper & Aggregator • UK Retail, E-Commerce & CISA KEV Ingestion</p>
+        </div>
+      </div>
+
+      <!-- Quick Navigation, CSV Export, Tabs & Theme Switcher -->
+      <div class="flex items-center space-x-2 sm:space-x-2.5">
+        <button data-action="exportFilteredToCSV" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700" title="Export currently filtered view to CSV">
+          <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="hidden md:inline">Export CSV</span>
+        </button>
+
+        <button id="tabFeedBtn" data-action="switchMainTab" data-value="feed" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white transition hover:bg-sky-500 shadow-sm flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4v10a2 2 0 01-2 2h-4"/></svg>
+          <span>Intel Feed</span>
+        </button>
+
+        <button id="tabMitreBtn" data-action="switchMainTab" data-value="mitre" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          <span class="hidden sm:inline">MITRE Matrix</span>
+          <span class="sm:hidden">Matrix</span>
+        </button>
+
+        <button id="tabAutomationBtn" data-action="switchMainTab" data-value="automation" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          <span class="hidden sm:inline">Pipeline</span>
+        </button>
+
+        <button data-action="toggleTheme" id="themeToggleBtn" aria-label="Toggle Light / Dark Mode" class="p-2 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-300 dark:border-slate-700" title="Toggle Light / Dark Mode">
+          <svg class="w-4 h-4 hidden dark:block text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg class="w-4 h-4 block dark:hidden text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <p id="collectionNotice" role="status" class="text-xs text-slate-500 dark:text-slate-400">Loading intelligence status.</p>
+    <details class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <summary class="cursor-pointer">Collection and briefing history</summary>
+      <ul id="collectionHistory" class="mt-2 space-y-1"></ul>
+      <ul id="feedHealth" class="mt-2 space-y-1"></ul>
+    </details>
+
+    <!-- FEED TAB CONTENT -->
+    <div id="tabFeedContent" class="space-y-6">
+
+      <!-- SECTOR METRIC CARDS ROW -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <!-- Critical Reports -->
+        <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+            <span>Critical CVSS</span>
+            <span class="text-rose-500">●</span>
+          </div>
+          <div class="text-xl sm:text-2xl font-bold font-mono text-rose-500" id="statCriticalCount">—</div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Reports with a verified critical base score</p>
+        </div>
+
+        <!-- Monitored Feeds -->
+        <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm">
+          <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+            <span>Monitored Feeds</span>
+            <span class="text-sky-500">●</span>
+          </div>
+          <div class="text-xl sm:text-2xl font-bold font-mono text-sky-600 dark:text-sky-400">10 Feeds + KEV</div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">NCSC, CISA KEV JSON, Krebs</p>
+        </div>
+
+        <!-- Verified CISA KEV membership -->
+        <div id="statKevCard" data-action="toggleKevFilter" class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm cursor-pointer hover:border-amber-400 dark:hover:border-amber-500/50 transition transform active:scale-[0.98] group" title="Filter reports with a verified CISA KEV match">
+          <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+            <span>CISA KEV</span>
+            <span class="text-amber-500 group-hover:scale-125 transition-transform">⚡</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <div class="text-xl sm:text-2xl font-bold font-mono text-amber-500" id="statKevCount">—</div>
+            <span id="kevCardIndicator" class="text-[11px] font-mono text-amber-600 dark:text-amber-400 opacity-80 group-hover:opacity-100 flex items-center gap-0.5">Filter ↗</span>
+          </div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Reports with a verified catalogue match</p>
+        </div>
+
+        <!-- PCI-DSS & ICO Compliance Watch (Interactive Filter Card) -->
+        <div id="statComplianceCard" data-action="togglePciIcoFilter" class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500/50 transition transform active:scale-[0.98] group" title="Click to filter Magecart, e-skimming & ICO personal data threats">
+          <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
+            <span>PCI & ICO Watch</span>
+            <span class="text-emerald-500">⚖️</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <div class="text-xl sm:text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400" id="statComplianceCount">—</div>
+            <span id="complianceCardIndicator" class="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 opacity-80 group-hover:opacity-100 flex items-center gap-0.5">Filter ↗</span>
+          </div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Payment security &amp; regulatory topics</p>
+        </div>
+      </div>
+
+      <!-- AI CISO BRIEFING HERO BANNER -->
+      <div class="bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-sky-500/30 rounded-2xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-8 -bottom-8 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">AI-ASSISTED BRIEFING</span>
+              <span class="text-xs text-slate-400" id="briefingLastRun">Checking briefing availability</span>
+            </div>
+            <h2 class="text-lg sm:text-xl font-bold text-white tracking-tight">UK Retail Threat Intelligence Briefing</h2>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-2xl">
+              Review cited public reporting, assessments and recommendations for retail security teams.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button data-action="viewAiBriefing" id="btnOpenBriefing" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-medium text-xs sm:text-sm shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 transition transform active:scale-95 whitespace-nowrap cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <span>View Executive Briefing</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTER & SEARCH BAR -->
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+          <!-- Text Search -->
+          <div class="relative flex-1">
+            <input type="text" id="searchInput" placeholder="Search titles, CVEs or cited techniques" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+
+          <!-- Quick Toggle Buttons -->
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Client-Side Private "My Stack" Filter & Config -->
+            <div class="inline-flex items-center rounded-lg shadow-sm border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5">
+              <button id="myStackFilterBtn" data-action="toggleMyStackFilter" class="px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition flex items-center gap-1.5 cursor-pointer" title="Isolate threats affecting your internal tech stack (Private to your browser)">
+                <span>🎯 My Stack</span>
+                <span id="myStackMatchCount" class="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-indigo-500 text-white font-bold">0</span>
+              </button>
+              <button data-action="openTechStackModal" class="px-2 py-1.5 rounded-md text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition border-l border-slate-300 dark:border-slate-700 cursor-pointer" title="Configure your internal technology stack keywords">
+                ⚙️
+              </button>
+            </div>
+
+            <!-- PCI & ICO Quick Filter Button -->
+            <button id="pciFilterBtn" data-action="togglePciIcoFilter" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+              <span>⚖️ PCI & ICO Filter</span>
+            </button>
+
+            <!-- Peak Trading Toggle Button -->
+            <button id="peakModeBtn" data-action="togglePeakTradingFilter" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-pink-50 dark:hover:bg-pink-950/50 hover:text-pink-600 dark:hover:text-pink-400 border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+              <span>🛍️ Peak Trading Mode</span>
+            </button>
+
+            <!-- CISA KEV Toggle Button -->
+            <button id="kevFilterBtn" data-action="toggleKevFilter" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-600 dark:hover:text-amber-400 border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+              <span>⚡ CISA KEV</span>
+            </button>
+
+            <!-- Severity Dropdown -->
+            <select id="severitySelect" class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50">
+              <option value="ALL">All technical severities</option>
+              <option value="CRITICAL">CVSS critical</option>
+              <option value="HIGH">CVSS high and critical</option>
+              <option value="MEDIUM">CVSS medium</option>
+              <option value="LOW">CVSS low</option>
+              <option value="NONE">CVSS zero</option>
+              <option value="UNKNOWN">CVSS unassessed</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Sub-Sector Category Filters -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+          <span class="text-slate-400 font-medium mr-1 text-[11px] uppercase tracking-wider">Sub-sector:</span>
+          <button data-action="setSubsector" data-value="all" data-subsector="all" class="subsector-btn px-2.5 py-1 rounded-md bg-sky-600 text-white font-medium transition cursor-pointer">All</button>
+          <button data-action="setSubsector" data-value="ecom" data-subsector="ecom" class="subsector-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition cursor-pointer">E-Commerce</button>
+          <button data-action="setSubsector" data-value="pos" data-subsector="pos" class="subsector-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition cursor-pointer">High Street & POS</button>
+          <button data-action="setSubsector" data-value="supply" data-subsector="supply" class="subsector-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition cursor-pointer">Logistics & Supply</button>
+          <button data-action="setSubsector" data-value="loyalty" data-subsector="loyalty" class="subsector-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition cursor-pointer">Loyalty & ICO</button>
+          <button data-action="setSubsector" data-value="enterprise" data-subsector="enterprise" class="subsector-btn px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium transition cursor-pointer">General enterprise</button>
+        </div>
+      </div>
+
+      <!-- ACTIVE FILTER INDICATOR BAR -->
+      <div id="filterBanner" class="hidden items-center justify-between bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 rounded-lg px-3 py-1.5 text-xs text-sky-800 dark:text-sky-300">
+        <span id="filterBannerText" class="font-medium"></span>
+        <button data-action="clearAllFilters" class="text-sky-600 dark:text-sky-400 hover:underline font-bold text-[11px] uppercase tracking-wide cursor-pointer">Clear Filters ✕</button>
+      </div>
+
+      <!-- THREAT FEED 2-COLUMN GRID (STRICT 2 CARDS PER ROW) -->
+      <div id="threatFeedContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="emptyFeedState" class="hidden text-center py-16 bg-white dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">No matching threat intelligence</h3>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">When a dataset is available, try clearing filters or switching subsectors.</p>
+        <button data-action="clearAllFilters" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white hover:bg-sky-500 transition">Reset All Filters</button>
+      </div>
+    </div>
+
+    <!-- MITRE ATT&CK MATRIX TAB CONTENT -->
+    <div id="tabMitreContent" class="hidden space-y-6">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🎯</span> MITRE ATT&CK Matrix for UK Retail
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Counts reflect technique links explicitly cited by source feed entries.</p>
+          </div>
+          <span class="text-xs font-mono px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Click a technique to isolate alerts</span>
+        </div>
+
+        <!-- Interactive MITRE Tactic Columns Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs" id="mitreMatrixGrid">
+          <!-- Rendered dynamically by renderMitreMatrix() -->
+        </div>
+      </div>
+    </div>
+
+    <!-- PIPELINE & AUTOMATION TAB CONTENT -->
+    <div id="tabAutomationContent" class="hidden space-y-6">
+      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-6">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>⚙️</span> Threat Intelligence Automation & Ingestion Feeds
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Machine-readable reports and public-source links.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- STIX 2.1 Threat Intel Bundle -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>📦</span> STIX 2.1 JSON Feed
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-400">STIX 2.1 JSON</span>
+            </div>
+            <p class="text-xs text-slate-500">STIX reports with links to the original sources.</p>
+            <div class="pt-1">
+              <a href="data/threats.stix.json" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-mono text-sky-600 dark:text-sky-400 hover:underline">
+                <span>data/threats.stix.json</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- RSS 2.0 Syndication Feed -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-950/40 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>📡</span> RSS 2.0 Syndicate Feed
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400">XML / RSS</span>
+            </div>
+            <p class="text-xs text-slate-500">Syndicate feed to connect directly into internal Slack, Microsoft Teams, or Feedly.</p>
+            <div class="pt-1">
+              <a href="data/feed.xml" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-mono text-sky-600 dark:text-sky-400 hover:underline">
+                <span>data/feed.xml</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 dark:text-slate-400">Independent UK retail cyber threat intelligence from public sources. The information describes sector trends and provides no assessment of any organisation’s security or compliance. <a href="./SCORING.md" class="text-sky-600 dark:text-sky-400 hover:underline">Scoring methodology</a> · <a href="./SOURCES.md" class="text-sky-600 dark:text-sky-400 hover:underline">Sources and attribution</a></p>
+  </main>
+
+  <!-- AI EXECUTIVE BRIEFING MODAL -->
+  <div id="aiBriefingModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 rounded-lg bg-sky-500/10 text-sky-500 font-bold">🤖</span>
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">Daily CISO Executive Briefing</h3>
+            <p class="text-xs text-slate-400" id="modalSubhead">Public-source evidence with traceable citations</p>
+          </div>
+        </div>
+        <button data-action="closeAiBriefing" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-sm">✕</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto text-xs sm:text-sm text-slate-700 dark:text-slate-300 space-y-3 leading-relaxed whitespace-pre-line font-sans" id="aiBriefingContent">
+        Loading latest executive brief...
+      </div>
+
+      <div class="border-t border-slate-100 dark:border-slate-800 pt-3 flex items-center justify-between text-xs text-slate-400">
+        <span>AI-assisted selection</span>
+        <button data-action="closeAiBriefing" class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium hover:bg-slate-300 dark:hover:bg-slate-700">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVATE TECH STACK CONFIGURATION MODAL (LOCALSTORAGE ONLY) -->
+  <div id="techStackModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500 font-bold text-base">🎯</span>
+          <div>
+            <h3 class="font-bold text-base text-slate-900 dark:text-white">My Stack Watchlist</h3>
+            <p class="text-xs text-slate-400">Match public intelligence against your chosen keywords</p>
+          </div>
+        </div>
+        <button data-action="closeTechStackModal" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-sm">✕</button>
+      </div>
+
+      <!-- Storage notice -->
+      <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2.5">
+        <span class="text-base flex-shrink-0">🔒</span>
+        <div class="leading-relaxed">
+          <strong class="font-bold">Browser storage.</strong> The dashboard saves keywords in this browser and matches them on this device. Dashboard requests exclude your keywords. Scripts running on this page can access its browser storage, so use general terms and avoid sensitive details.
+        </div>
+      </div>
+
+      <div class="space-y-3 flex-1 overflow-y-auto pr-1">
+        <div>
+          <label for="techStackInput" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            Add Technology, Vendor or Appliance Keyword:
+          </label>
+          <div class="flex gap-2">
+            <input type="text" id="techStackInput" placeholder="e.g. point of sale" class="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button data-action="addTechStackTag" class="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition">Add</button>
+          </div>
+        </div>
+
+        <!-- Quick Retail Templates -->
+        <div class="pt-1">
+          <span class="text-[11px] text-slate-400 block mb-1">Quick add common retail topics</span>
+          <div class="flex flex-wrap gap-1.5 text-xs">
+            <button data-action="quickAddTech" data-value="point of sale" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">+ Point of sale</button>
+            <button data-action="quickAddTech" data-value="e-commerce" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">+ E-commerce</button>
+            <button data-action="quickAddTech" data-value="payment gateway" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">+ Payment gateway</button>
+            <button data-action="quickAddTech" data-value="identity" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">+ Identity</button>
+            <button data-action="quickAddTech" data-value="firewall" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">+ Firewall</button>
+          </div>
+        </div>
+
+        <!-- Active Tags Display -->
+        <div class="pt-2">
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            Active Watchlist Keywords:
+          </label>
+          <div id="techStackTagsContainer" class="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 min-h-[70px]">
+            <!-- Rendered by renderTechStackTags() -->
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 dark:border-slate-800 pt-3 flex items-center justify-between text-xs">
+        <button data-action="clearTechStack" class="text-rose-500 hover:underline">Clear saved keywords</button>
+        <button data-action="closeTechStackModal" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-sm transition">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white border border-slate-700 rounded-xl px-4 py-2.5 text-xs shadow-2xl flex items-center gap-2 pointer-events-none">
+    <span id="toastIcon">✓</span>
+    <span id="toastMsg">Synced with live feed</span>
+  </div>
+
+  <!-- CORE JAVASCRIPT LOGIC -->
+  <template id="threatCardTemplate">
+    <article class="bg-white dark:bg-slate-900/80 border rounded-xl p-4 sm:p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between h-full">
+      <div>
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div data-field="badges" class="flex flex-wrap items-center gap-1.5"></div>
+          <time data-field="date" class="text-[11px] font-mono text-slate-400 whitespace-nowrap flex-shrink-0"></time>
+        </div>
+        <h3 data-field="title" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug tracking-tight mb-2"></h3>
+        <p data-field="summary" class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3"></p>
+        <div data-field="advisory-box" class="mt-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+          <span class="font-bold text-slate-800 dark:text-slate-200">Recommendation</span>
+          <span data-field="advisory"></span>
+        </div>
+        <details data-field="priority-details" class="mt-3 text-xs text-slate-600 dark:text-slate-300">
+          <summary class="cursor-pointer font-medium">Priority evidence</summary>
+          <ul data-field="priority-points" class="mt-1 space-y-1"></ul>
+        </details>
+        <div data-field="tags" class="mt-3 flex flex-wrap gap-1"></div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex flex-wrap items-center gap-1.5 text-slate-500 dark:text-slate-400 mr-2">
+          <span data-field="source" class="font-medium"></span>
+          <span data-field="priority" class="font-mono text-[10px]"></span>
+          <span data-field="mitre" class="font-mono text-[10px] text-slate-400 dark:text-slate-500"></span>
+          <span data-field="confidence" class="font-mono text-[10px]"></span>
+        </div>
+        <a data-field="link" target="_blank" rel="noopener noreferrer" class="shrink-0 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1">
+          <span>Read Advisory</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
+      </div>
+    </article>
+  </template>
+
+</body>
+</html>

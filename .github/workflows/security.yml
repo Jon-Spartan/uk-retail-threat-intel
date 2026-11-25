@@ -1,0 +1,61 @@
+name: Test and audit supply chain
+
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: '20 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Scan Git history for secrets
+        run: bash scripts/scan-secrets.sh git .
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Install locked runtime dependencies and test
+        run: |
+          python -m pip install --require-hashes --no-deps -r requirements.lock.txt
+          python -m pip check
+          python -m unittest discover -s tests -v
+      - name: Audit Python dependencies
+        run: |
+          python -m venv "$RUNNER_TEMP/audit-env"
+          "$RUNNER_TEMP/audit-env/bin/python" -m pip install --require-hashes --no-deps -r requirements-audit.lock.txt
+          "$RUNNER_TEMP/audit-env/bin/python" -m pip_audit --require-hashes --disable-pip -r requirements.lock.txt
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+      - name: Audit and verify compiled assets
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm audit
+          pnpm run build:assets
+          if [[ -n "$(git status --porcelain -- assets)" ]]; then
+            echo "Compiled assets differ. Rebuild and include the generated files."
+            exit 1
+          fi
+          python -m scripts.publication stage-site data public-site
+      - name: Run dashboard browser regressions
+        run: |
+          pnpm exec playwright install --with-deps --only-shell chromium
+          pnpm run test:browser

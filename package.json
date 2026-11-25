@@ -1,0 +1,15 @@
+{
+  "name": "uk-retail-threat-intel",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build:assets": "tailwindcss --config tailwind.config.cjs --input styles/dashboard.css --output assets/dashboard.css --minify && node scripts/copy-fonts.cjs",
+    "test:browser": "node --test tests/dashboard.test.cjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "playwright": "1.65.1",
+    "tailwindcss": "3.4.17"
+  }
+}

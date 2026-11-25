@@ -1,0 +1,21 @@
+{
+  "collection": {
+    "state": "snapshot",
+    "checked_at": null,
+    "data_updated_at": null,
+    "last_success_at": null,
+    "feeds": []
+  },
+  "daily": {
+    "state": "unavailable",
+    "checked_at": null,
+    "generated_at": null,
+    "validated_at": null
+  },
+  "weekly": {
+    "state": "unavailable",
+    "checked_at": null,
+    "generated_at": null,
+    "validated_at": null
+  }
+}
