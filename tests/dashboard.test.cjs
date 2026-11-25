@@ -253,7 +253,7 @@ test('dashboard distinguishes retained, stale, failed, and unavailable intellige
   board.assertQuiet();
 });
 
-test('editorial sections present dated source links and leave the live feed accessible on mobile', {timeout: 30000}, async t => {
+test('editorial sections keep dated source links and stay separate from KEV filters on mobile', {timeout: 30000}, async t => {
   const board = await dashboard(t, {
     'data/threats.json': [report],
     'data/intelligence_status.json': {collection: collection('current')},
@@ -263,13 +263,23 @@ test('editorial sections present dated source links and leave the live feed acce
   await page.setViewportSize({width: 390, height: 844});
   const retail = page.getByRole('region', {name: 'Retail watch'});
   const cyber = page.getByRole('region', {name: 'Cyber watch'});
+  const nav = page.getByRole('navigation', {name: 'Dashboard views'});
   await titles(page).first().waitFor();
+  const filter = page.getByRole('region', {name: 'Filter vulnerabilities'});
+  await filter.waitFor();
+  assert.equal(await retail.isVisible(), false);
+  await page.locator('#searchInput').fill('Checkout');
+  await nav.getByRole('link', {name: 'Stories', exact: true}).click();
+  await retail.waitFor();
+  assert.equal(await filter.isVisible(), false);
+  assert.equal(await page.locator('#threatFeedContainer').isVisible(), false);
+  assert.equal(await nav.getByRole('link', {name: 'Stories', exact: true}).getAttribute('aria-current'), 'page');
   for (const section of [retail, cyber]) {
     await section.waitFor();
     const articles = await section.getByRole('article').all();
     assert.ok(articles.length > 0);
     for (const article of articles) {
-      assert.ok((await article.getByRole('heading', {level: 3}).textContent()).trim());
+      assert.ok((await article.getByRole('heading', {level: 4}).textContent()).trim());
       assert.match(await article.locator('time').first().getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
       const links = await article.getByRole('link').all();
       assert.ok(links.length > 0);
@@ -282,11 +292,31 @@ test('editorial sections present dated source links and leave the live feed acce
     }
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
-  await retail.getByRole('link', {name: 'Jump to Cyber watch'}).click();
+  await page.getByRole('navigation', {name: 'Story sections'}).getByRole('link', {name: 'Cyber watch'}).click();
   assert.equal(new URL(page.url()).hash, '#cyber-watch');
-  await retail.getByRole('link', {name: 'Jump to the live feed'}).click();
-  assert.equal(new URL(page.url()).hash, '#live-intelligence');
+  await page.reload({waitUntil: 'domcontentloaded'});
+  await cyber.waitFor();
+  assert.equal(await filter.isVisible(), false);
+
+  await page.getByRole('navigation', {name: 'Story sections'}).getByRole('link', {name: 'Weekly roundup'}).click();
+  assert.equal(new URL(page.url()).hash, '#weekly-roundup');
+  await page.goBack();
+  await cyber.waitFor();
+  assert.equal(new URL(page.url()).hash, '#cyber-watch');
+  await nav.getByRole('link', {name: 'CISA KEV', exact: true}).click();
+  await filter.waitFor();
+  assert.equal(await cyber.isVisible(), false);
+  assert.equal(await nav.getByRole('link', {name: 'CISA KEV', exact: true}).getAttribute('aria-current'), 'page');
   assert.deepEqual(await titles(page).allTextContents(), [report.title]);
+
+  await page.locator('#searchInput').fill('no matching report');
+  await page.locator('#emptyFeedState').waitFor();
+  await nav.getByRole('link', {name: 'Stories', exact: true}).click();
+  await cyber.waitFor();
+  await nav.getByRole('link', {name: 'CISA KEV', exact: true}).click();
+  await filter.waitFor();
+  assert.equal(await page.locator('#searchInput').inputValue(), 'no matching report');
+  await page.locator('#emptyFeedState').waitFor();
   board.assertQuiet();
 });
 
@@ -316,7 +346,7 @@ test('triage prefers declared product matches and newly observed records, withho
   await page.reload({waitUntil: 'domcontentloaded'});
   const triage = page.getByRole('region', {name: 'Start here'});
   await triage.getByText('1 new since your last visit in this browser.', {exact: true}).waitFor();
-  assert.deepEqual(await triage.getByRole('heading', {level: 3}).allTextContents(),
+  assert.deepEqual(await triage.getByRole('heading', {level: 4}).allTextContents(),
     [matched.title, recent.title, priority.title]);
   await triage.getByText('CISA KEV lists Example Vendor Edge Gateway. Check your version against the vendor advisory.',
     {exact: true}).waitFor();
@@ -324,8 +354,11 @@ test('triage prefers declared product matches and newly observed records, withho
   assert.ok(requests.every(request => ![request.url, request.body, JSON.stringify(request.headers)]
     .some(value => value?.includes('private-fixture-alias'))));
 
+  await page.locator('#tabStoriesBtn').click();
   await page.getByRole('region', {name: 'Weekly roundup'}).getByText(/19–25 November 2026/).waitFor();
   await page.getByRole('link', {name: 'Commission follow-up'}).waitFor();
+  await page.locator('#tabFeedBtn').click();
+  await triage.waitFor();
   responses['data/intelligence_status.json'] = {collection: collection('current', 4)};
   await sync(page, 'STALE');
   await triage.getByText(/shortlist is unavailable/).waitFor();

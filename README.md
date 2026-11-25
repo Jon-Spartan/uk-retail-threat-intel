@@ -48,6 +48,8 @@ No environment variables are required for the initial preview, tests or collecti
 
 ## Using the dashboard
 
+Open **CISA KEV** to check the shortlist and filter vulnerabilities. Search, My Stack and CSV export apply to the catalogue results. Open **Stories** for Retail watch, Cyber watch and the weekly roundup. Links to individual story sections open that view directly.
+
 **Start here** shows up to three recent records with verified evidence and a source link. It puts structured My Stack matches first, then items first observed by the platform since this browser’s last successful visit, then the existing sector priority score. The shortlist is unavailable when collection data is stale or cannot be verified. Its visit timestamp stays in the browser.
 
 **My Stack** checks vendor and product names declared by CISA KEV or the primary CVE record. Use a vertical bar to save aliases in a single preference. Existing terms can still match report text as topic matches. Verify affected versions and fixes in the vendor advisory.

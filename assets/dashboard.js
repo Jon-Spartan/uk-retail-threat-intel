@@ -239,7 +239,7 @@ function renderTriage() {
       : 'Check whether you use the affected product, then verify versions and fixes in the vendor advisory.';
     card.append(
       textElement('p', reasons.join(' · '), 'text-xs font-medium text-sky-700 dark:text-sky-300'),
-      textElement('h3', item.title, 'font-semibold leading-tight'),
+      textElement('h4', item.title, 'font-semibold leading-tight'),
       textElement('p', action, 'text-sm text-slate-600 dark:text-slate-300'),
       link
     );
@@ -702,7 +702,7 @@ function renderMitreMatrix() {
 
 function filterByMitreTechnique(techId) {
   activeTechnique = techId;
-  switchMainTab('feed');
+  window.location.hash = 'live-intelligence';
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.value = techId;
@@ -966,37 +966,18 @@ function closeAiBriefing() {
 // =========================================================================
 // 10. TAB NAVIGATION & CSV EXPORTER
 // =========================================================================
-function switchMainTab(tabKey) {
-  const feedTab = document.getElementById('tabFeedContent');
-  const mitreTab = document.getElementById('tabMitreContent');
-  const autoTab = document.getElementById('tabAutomationContent');
-
-  const feedBtn = document.getElementById('tabFeedBtn');
-  const mitreBtn = document.getElementById('tabMitreBtn');
-  const autoBtn = document.getElementById('tabAutomationBtn');
-
-  // Hide all tabs
-  feedTab?.classList.add('hidden');
-  mitreTab?.classList.add('hidden');
-  autoTab?.classList.add('hidden');
-
-  // Reset button classes
-  [feedBtn, mitreBtn, autoBtn].forEach(btn => {
-    if (!btn) return;
-    btn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 cursor-pointer";
+function showDashboardView() {
+  const target = document.getElementById(window.location.hash.slice(1));
+  const view = target?.closest('[data-dashboard-view]')?.dataset.dashboardView || 'kev';
+  document.querySelectorAll('[data-dashboard-view]').forEach(panel => {
+    panel.classList.toggle('hidden', panel.dataset.dashboardView !== view);
   });
-
-  // Activate chosen tab
-  if (tabKey === 'feed') {
-    feedTab?.classList.remove('hidden');
-    if (feedBtn) feedBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white transition hover:bg-sky-500 shadow-sm flex items-center gap-1.5 cursor-pointer";
-  } else if (tabKey === 'mitre') {
-    mitreTab?.classList.remove('hidden');
-    if (mitreBtn) mitreBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white transition hover:bg-sky-500 shadow-sm flex items-center gap-1.5 cursor-pointer";
-  } else if (tabKey === 'automation') {
-    autoTab?.classList.remove('hidden');
-    if (autoBtn) autoBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white transition hover:bg-sky-500 shadow-sm flex items-center gap-1.5 cursor-pointer";
-  }
+  document.querySelectorAll('[data-dashboard-link]').forEach(link => {
+    if (link.dataset.dashboardLink === view) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  // The target may have been hidden when the browser tried to scroll to it.
+  if (target) requestAnimationFrame(() => target.scrollIntoView({block: 'start'}));
 }
 
 function csvCell(value) {
@@ -1065,7 +1046,6 @@ function bindDashboardControls() {
     dismissFlashAlert,
     manualSync,
     exportFilteredToCSV,
-    switchMainTab,
     toggleTheme,
     toggleKevFilter,
     togglePciIcoFilter,
@@ -1102,6 +1082,8 @@ function bindDashboardControls() {
 
 window.addEventListener('DOMContentLoaded', () => {
   bindDashboardControls();
+  showDashboardView();
+  window.addEventListener('hashchange', showDashboardView);
   // 1. Initial Load
   fetchThreatTelemetry();
 
