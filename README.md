@@ -76,6 +76,8 @@ pnpm exec playwright install --only-shell chromium
 pnpm run test:browser
 ```
 
+When deploying changes that require matching versions of the HTML, dashboard script and stylesheet, update the numeric asset revision in the two dashboard asset URLs in the HTML. This gives browsers and Pages caches a fresh URL for the updated assets.
+
 The Python suite uses fixtures and mocked transport. The browser suite serves the staged site at a simulated Pages project path, intercepts requests and uses synthetic data. These tests make no Gemini requests or real webhook deliveries. The security workflow also audits dependency advisories, scans Git history and checks that the asset build reproduces the checked-in files. See [the remediation and verification record](SECURITY_REMEDIATION.md).
 
 ## GitHub Pages deployment
