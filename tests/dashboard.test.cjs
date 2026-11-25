@@ -252,3 +252,32 @@ test('dashboard distinguishes retained, stale, failed, and unavailable intellige
   assert.equal(await titles(page).count(), 0);
   board.assertQuiet();
 });
+
+test('retail watch presents dated source links and leaves the live feed accessible on mobile', {timeout: 30000}, async t => {
+  const board = await dashboard(t, {
+    'data/threats.json': [report],
+    'data/intelligence_status.json': {collection: collection('current')},
+    'data/flash_alert.json': 404
+  });
+  const {page} = board;
+  await page.setViewportSize({width: 390, height: 844});
+  const watch = page.getByRole('region', {name: 'Retail watch'});
+  await watch.waitFor();
+  await titles(page).first().waitFor();
+  const articles = await watch.getByRole('article').all();
+  assert.ok(articles.length > 0);
+  for (const article of articles) {
+    assert.ok((await article.getByRole('heading', {level: 3}).textContent()).trim());
+    assert.match(await article.locator('time').getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
+    const source = article.getByRole('link');
+    assert.ok((await source.textContent()).trim());
+    const url = new URL(await source.getAttribute('href'));
+    assert.equal(url.protocol, 'https:');
+    assert.equal(url.username + url.password, '');
+  }
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  await watch.getByRole('link', {name: 'Jump to the live feed'}).click();
+  assert.equal(new URL(page.url()).hash, '#live-intelligence');
+  assert.deepEqual(await titles(page).allTextContents(), [report.title]);
+  board.assertQuiet();
+});

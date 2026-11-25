@@ -38,15 +38,15 @@
 
   <!-- TOP HEADER & STATUS BAR -->
   <header class="border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-950/80 backdrop-blur sticky top-0 z-40 transition-colors">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-start gap-2 py-3 lg:h-16 lg:flex-row lg:items-center lg:justify-between lg:py-0">
       <div class="flex items-center space-x-3">
-        <div class="h-9 w-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+        <div class="h-9 w-9 shrink-0 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
           </svg>
         </div>
         <div>
-          <div class="flex items-center space-x-2">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h1 class="font-bold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               UK Retail <span class="text-sky-600 dark:text-sky-400 font-mono text-xs uppercase px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950 border border-sky-300 dark:border-sky-800">Threat Intel</span>
             </h1>
@@ -58,13 +58,13 @@
               <span id="syncTimeAgo" class="text-[10px] opacity-75 font-mono ml-0.5 hidden sm:inline"></span>
             </button>
           </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Automated Scraper & Aggregator • UK Retail, E-Commerce & CISA KEV Ingestion</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">UK retail security reporting and live CISA KEV intelligence</p>
         </div>
       </div>
 
       <!-- Quick Navigation, CSV Export, Tabs & Theme Switcher -->
-      <div class="flex items-center space-x-2 sm:space-x-2.5">
-        <button data-action="exportFilteredToCSV" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700" title="Export currently filtered view to CSV">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <button data-action="exportFilteredToCSV" aria-label="Export filtered records as CSV" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700" title="Export currently filtered view to CSV">
           <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <span class="hidden md:inline">Export CSV</span>
         </button>
@@ -80,7 +80,7 @@
           <span class="sm:hidden">Matrix</span>
         </button>
 
-        <button id="tabAutomationBtn" data-action="switchMainTab" data-value="automation" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
+        <button id="tabAutomationBtn" aria-label="Pipeline" data-action="switchMainTab" data-value="automation" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
           <span class="hidden sm:inline">Pipeline</span>
         </button>
@@ -110,6 +110,42 @@
     <!-- FEED TAB CONTENT -->
     <div id="tabFeedContent" class="space-y-6">
 
+      <section id="retail-watch" aria-labelledby="retailWatchTitle" class="space-y-3">
+        <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+          <div>
+            <h2 id="retailWatchTitle" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Retail watch</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Editorial notes on security stories that matter to UK retail.</p>
+          </div>
+          <a href="#live-intelligence" class="text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Jump to the live feed</a>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <article class="flex flex-col gap-3 rounded-xl border border-slate-700 bg-gradient-to-br from-slate-900 to-sky-950 p-5 text-white shadow-sm sm:col-span-2 lg:col-span-1">
+            <p class="text-xs font-medium text-sky-200">Shopping scams · <time datetime="2026-11-24">24 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight">Give shoppers a way back to the real store</h3>
+            <p class="text-sm leading-relaxed text-slate-200">The NCSC reviewed its online shopping guidance just before Black Friday. It advises shoppers to find a retailer’s official site themselves and use passkeys or two-step verification where available.</p>
+            <p class="text-sm leading-relaxed text-slate-200"><strong>For retailers</strong> Make order tracking and scam reporting easy to find on your own site.</p>
+            <a href="https://www.ncsc.gov.uk/guidance/shopping-online-securely" class="mt-auto text-sm font-medium text-sky-200 underline underline-offset-4">NCSC shopping guidance</a>
+          </article>
+
+          <article class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+            <p class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Supplier incidents · <time datetime="2026-11-23">23 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">When a supplier reports a breach</h3>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The Register reported a breach at an online supplier to Next. The retailer said it had found no evidence that customer personal data was affected at the time of its statement. Its investigation was still open.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Agree who confirms the impact and who answers customers when a supplier reports an incident.</p>
+            <a href="https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">The Register’s reporting</a>
+          </article>
+
+          <article class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+            <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Payment data · <time datetime="2026-11-20">20 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">Payment data after checkout</h3>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Ask payment providers which card data they retain and how they notify affected customers.</p>
+            <a href="https://grow.cleverbridge.com/incident-update" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Cleverbridge incident update</a>
+          </article>
+        </div>
+      </section>
+
       <!-- SECTOR METRIC CARDS ROW -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <!-- Critical Reports -->
@@ -125,11 +161,11 @@
         <!-- Monitored Feeds -->
         <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 sm:p-4 shadow-sm">
           <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium mb-1">
-            <span>Monitored Feeds</span>
+            <span>Automated feed</span>
             <span class="text-sky-500">●</span>
           </div>
-          <div class="text-xl sm:text-2xl font-bold font-mono text-sky-600 dark:text-sky-400">10 Feeds + KEV</div>
-          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">NCSC, CISA KEV JSON, Krebs</p>
+          <div class="text-xl sm:text-2xl font-bold font-mono text-sky-600 dark:text-sky-400">CISA KEV</div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">CVE and EPSS enrichment</p>
         </div>
 
         <!-- Verified CISA KEV membership -->
@@ -183,7 +219,7 @@
       </div>
 
       <!-- FILTER & SEARCH BAR -->
-      <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
+      <div id="live-intelligence" class="scroll-mt-32 lg:scroll-mt-24 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
         <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
           <!-- Text Search -->
           <div class="relative flex-1">

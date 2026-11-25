@@ -13,6 +13,16 @@ These reference notes are separate from the live feed and describe the source gu
 - **National Cyber Security Centre, NCSC Annual Review 2026, Embedding cyber security into everything, 3 November 2026.** The chapter emphasises practical baseline controls, including keeping software current and managing access to systems. Contains Crown copyright information licensed under the Open Government Licence v3.0. [NCSC review](https://www.ncsc.gov.uk/collection/annual-review-2026/building-strong-foundations/embedding-into-everything) · [NCSC reuse terms](https://www.ncsc.gov.uk/section/about-this-website/terms-and-conditions) · [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 - **Information Commission’s Office, A guide to data security, 19 May 2023 (update listed by the ICO), licensed under the Open Government Licence.** The guide describes how to choose and review controls proportionate to the risks of processing personal data. The ICO marks this guidance as under review. [ICO guide](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/security/a-guide-to-data-security/) · [ICO reuse terms](https://ico.org.uk/global/copyright-and-re-use-of-materials/) · [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 
+## Retail watch
+
+The dashboard’s Retail watch section contains dated, project-authored notes. The initial notes were drafted with AI assistance. Their factual summaries were checked against the cited public sources, and suggestions for retail teams are labelled separately. The browser loads no publisher content in the background.
+
+- **NCSC** guidance on shopping and payments online, reviewed 24 November 2026. [Original guidance](https://www.ncsc.gov.uk/guidance/shopping-online-securely)
+- **The Register** reporting on a supplier incident affecting Next, published 23 November 2026. The note attributes the reported findings to the retailer and preserves the uncertainty of its statement. [Original reporting](https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684) · [Publisher linking policy](https://www.theregister.com/Profile/linking/)
+- **Cleverbridge** incident update confirming the start of customer notifications on 20 November 2026. [Company disclosure](https://grow.cleverbridge.com/incident-update)
+
+To update a note, edit the Retail watch section in [the dashboard HTML](index.html). Verify claims against original evidence, write the headline and summary in your own words, and use a dated, attributed HTTPS link. The date should identify the source update or the event described in the card. Review the note when new facts change its substance.
+
 ## Release policy
 
 The release starts with an empty checked-in snapshot. Public datasets and briefing evidence are limited to CISA catalogue records. The collection workflow validates candidate data before artifact upload and validates it again when restoring data or staging the site. The reviewed UK guidance above is published as a static reference.

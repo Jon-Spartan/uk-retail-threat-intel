@@ -41,7 +41,7 @@ No environment variables are required for the initial preview, tests or collecti
 
 ## Intelligence methodology and sources
 
-- The initial release collects CISA KEV automatically and includes reviewed NCSC and ICO guidance references. The collection and publication policy excludes commercial news feeds. [Sources and attribution](SOURCES.md)
+- The initial release collects CISA KEV automatically and includes reviewed NCSC and ICO guidance references. Retail watch adds dated, project-authored notes with source links and retail context. The collection and publication policy excludes commercial news feeds. [Sources and attribution](SOURCES.md)
 - The [CISA KEV catalogue](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) supports confirmed exploitation. A mention in reporting alone is insufficient. The [CVE List](https://github.com/CVEProject/cvelistV5) supplies published CVE records and available CVSS base scores. [FIRST EPSS](https://www.first.org/epss/) supplies dated probability estimates for verified CVEs.
 - The dashboard keeps technical severity, sector priority, exploitation, and confidence separate. Retail relevance is assessed from public reporting cues. ATT&CK technique references require a source link. See [the scoring methodology](SCORING.md) for factor weights and interpretation.
 - The dashboard labels stale, partial, failed and unavailable data. During a partial collection, recent reports from failed sources can be marked as retained. A total failure retains the prior snapshot. Reports in STIX and RSS link back to publishers. Source URLs are observables and must be treated as citations.
