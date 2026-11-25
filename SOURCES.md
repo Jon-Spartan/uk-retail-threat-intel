@@ -23,6 +23,14 @@ The dashboard’s Retail watch section contains dated, project-authored notes. T
 
 To update a note, edit the Retail watch section in [the dashboard HTML](index.html). Verify claims against original evidence, write the headline and summary in your own words, and use a dated, attributed HTTPS link. The date should identify the source update or the event described in the card. Review the note when new facts change its substance.
 
+## Cyber watch
+
+Cyber watch applies the same editorial method as Retail watch to significant stories beyond retail. The first notes were drafted with AI assistance and checked against the sources below. Takeaways are editorial suggestions. These stories remain separate from the automated CISA feed and its exports.
+
+- **FinCEN filing disruption.** The Register reported on the incident on 25 November 2026. The original FinCEN order specifies who qualifies for the deadline changes. [The Register’s reporting](https://www.theregister.com/security/2026/11/25/us-treasury-financial-crimes-unit-becomes-latest-fed-breach-victim/5312165) · [FinCEN order (PDF)](https://www.fincen.gov/sites/default/files/100/ORDER-FIN-2026-R002.pdf)
+- **EU Academy data leak.** The European Commission confirmed the platform impact at its 23 November 2026 briefing and said on 25 November that its investigation continued. [Commission briefing](https://audiovisual.ec.europa.eu/en/media/video/I-298395) · [Follow-up](https://audiovisual.ec.europa.eu/en/media/video/I-298552)
+- **Oyster photocard disruption.** The Register reported TfL’s response and the effect on travel and website access on 19 November 2026. [The Register’s reporting](https://www.theregister.com/security/2026/11/19/tfl-takes-oyster-photocard-website-offline-after-attackers-compromise-customer-accounts/5310985)
+
 ## Release policy
 
 The release starts with an empty checked-in snapshot. Public datasets and briefing evidence are limited to CISA catalogue records. The collection workflow validates candidate data before artifact upload and validates it again when restoring data or staging the site. The reviewed UK guidance above is published as a static reference.

@@ -116,7 +116,10 @@
             <h2 id="retailWatchTitle" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Retail watch</h2>
             <p class="text-sm text-slate-600 dark:text-slate-400">Editorial notes on security stories that matter to UK retail.</p>
           </div>
-          <a href="#live-intelligence" class="text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Jump to the live feed</a>
+          <nav aria-label="Jump to dashboard sections" class="flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium text-sky-700 dark:text-sky-300">
+            <a href="#cyber-watch" class="underline underline-offset-4">Jump to Cyber watch</a>
+            <a href="#live-intelligence" class="underline underline-offset-4">Jump to the live feed</a>
+          </nav>
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -142,6 +145,42 @@
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
             <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Ask payment providers which card data they retain and how they notify affected customers.</p>
             <a href="https://grow.cleverbridge.com/incident-update" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Cleverbridge incident update</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="cyber-watch" aria-labelledby="cyberWatchTitle" class="scroll-mt-32 space-y-3 lg:scroll-mt-24">
+        <div>
+          <h2 id="cyberWatchTitle" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Cyber watch</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Major cyber stories from the UK and around the world.</p>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-3">
+          <article id="cyber-watch-fincen" class="flex flex-col gap-3 rounded-xl border border-slate-200 border-t-2 border-t-indigo-500 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-t-indigo-400 dark:bg-slate-900/80">
+            <p class="text-xs font-medium text-indigo-700 dark:text-indigo-300">US financial reporting · <time datetime="2026-11-25">25 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">FinCEN extends some filing deadlines after disruption</h3>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The US Treasury’s financial crimes bureau took some systems offline while it investigated unauthorised access. FinCEN gave eligible filers extra time to submit certain reports.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Takeaway</strong> Know where to check for deadline changes if a regulator’s filing portal goes down.</p>
+            <div class="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-sky-700 dark:text-sky-300">
+              <a href="https://www.theregister.com/security/2026/11/25/us-treasury-financial-crimes-unit-becomes-latest-fed-breach-victim/5312165" class="underline underline-offset-4">The Register</a>
+              <a href="https://www.fincen.gov/sites/default/files/100/ORDER-FIN-2026-R002.pdf" class="underline underline-offset-4">FinCEN order (PDF)</a>
+            </div>
+          </article>
+
+          <article id="cyber-watch-eu-academy" class="flex flex-col gap-3 rounded-xl border border-slate-200 border-t-2 border-t-sky-500 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-t-sky-400 dark:bg-slate-900/80">
+            <p class="text-xs font-medium text-sky-700 dark:text-sky-300">European public services · <time datetime="2026-11-23">23 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">EU Academy goes offline after a data leak</h3>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The European Commission confirmed that a wider cyber incident exposed personal data from its learning platform. It suspended public access while it assessed how many users were affected.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Takeaway</strong> Plan how to reach users through a separate channel when the service they normally sign in to is unavailable.</p>
+            <a href="https://audiovisual.ec.europa.eu/en/media/video/I-298395" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">European Commission briefing</a>
+          </article>
+
+          <article id="cyber-watch-oyster" class="flex flex-col gap-3 rounded-xl border border-slate-200 border-t-2 border-t-emerald-500 bg-white p-5 shadow-sm dark:border-slate-800 dark:border-t-emerald-400 dark:bg-slate-900/80">
+            <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">UK transport · <time datetime="2026-11-19">19 November 2026</time></p>
+            <h3 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">Oyster cards kept working as TfL investigated a breach</h3>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Transport for London told The Register it took the Oyster photocard website offline after an incident affecting customer accounts. Existing photocards could still be used for travel.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>Takeaway</strong> In an incident update, spell out which services customers can still use and where to get help.</p>
+            <a href="https://www.theregister.com/security/2026/11/19/tfl-takes-oyster-photocard-website-offline-after-attackers-compromise-customer-accounts/5310985" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">The Register’s TfL reporting</a>
           </article>
         </div>
       </section>

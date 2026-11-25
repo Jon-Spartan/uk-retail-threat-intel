@@ -253,7 +253,7 @@ test('dashboard distinguishes retained, stale, failed, and unavailable intellige
   board.assertQuiet();
 });
 
-test('retail watch presents dated source links and leaves the live feed accessible on mobile', {timeout: 30000}, async t => {
+test('editorial sections present dated source links and leave the live feed accessible on mobile', {timeout: 30000}, async t => {
   const board = await dashboard(t, {
     'data/threats.json': [report],
     'data/intelligence_status.json': {collection: collection('current')},
@@ -261,22 +261,30 @@ test('retail watch presents dated source links and leaves the live feed accessib
   });
   const {page} = board;
   await page.setViewportSize({width: 390, height: 844});
-  const watch = page.getByRole('region', {name: 'Retail watch'});
-  await watch.waitFor();
+  const retail = page.getByRole('region', {name: 'Retail watch'});
+  const cyber = page.getByRole('region', {name: 'Cyber watch'});
   await titles(page).first().waitFor();
-  const articles = await watch.getByRole('article').all();
-  assert.ok(articles.length > 0);
-  for (const article of articles) {
-    assert.ok((await article.getByRole('heading', {level: 3}).textContent()).trim());
-    assert.match(await article.locator('time').getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
-    const source = article.getByRole('link');
-    assert.ok((await source.textContent()).trim());
-    const url = new URL(await source.getAttribute('href'));
-    assert.equal(url.protocol, 'https:');
-    assert.equal(url.username + url.password, '');
+  for (const section of [retail, cyber]) {
+    await section.waitFor();
+    const articles = await section.getByRole('article').all();
+    assert.ok(articles.length > 0);
+    for (const article of articles) {
+      assert.ok((await article.getByRole('heading', {level: 3}).textContent()).trim());
+      assert.match(await article.locator('time').getAttribute('datetime'), /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/);
+      const links = await article.getByRole('link').all();
+      assert.ok(links.length > 0);
+      for (const link of links) {
+        assert.ok((await link.textContent()).trim());
+        const url = new URL(await link.getAttribute('href'));
+        assert.equal(url.protocol, 'https:');
+        assert.equal(url.username + url.password, '');
+      }
+    }
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
-  await watch.getByRole('link', {name: 'Jump to the live feed'}).click();
+  await retail.getByRole('link', {name: 'Jump to Cyber watch'}).click();
+  assert.equal(new URL(page.url()).hash, '#cyber-watch');
+  await retail.getByRole('link', {name: 'Jump to the live feed'}).click();
   assert.equal(new URL(page.url()).hash, '#live-intelligence');
   assert.deepEqual(await titles(page).allTextContents(), [report.title]);
   board.assertQuiet();
