@@ -40,7 +40,7 @@ function collection(state, hours = 0) {
     last_success_at: hoursAgo(hours + 1), feeds: []};
 }
 
-async function dashboard(t, initialResponses, {checkCsp = false} = {}) {
+async function dashboard(t, initialResponses, {checkCsp = false, clock = false, hash = ''} = {}) {
   const context = await browser.newContext({offline: true, serviceWorkers: 'block'});
   t.after(() => context.close());
   const page = await context.newPage();
@@ -48,7 +48,8 @@ async function dashboard(t, initialResponses, {checkCsp = false} = {}) {
   const requests = [];
   const unexpected = [];
   const errors = [];
-  const responses = {...initialResponses};
+  const responses = {'data/official_updates.json': 404, ...initialResponses};
+  if (clock) await page.clock.install();
   if (checkCsp) {
     await page.addInitScript(() => {
       window.fixtureCspViolation = false;
@@ -87,7 +88,7 @@ async function dashboard(t, initialResponses, {checkCsp = false} = {}) {
     unexpected.push(request.url());
     return route.fulfill({status: 404});
   });
-  await page.goto(origin + base, {waitUntil: 'domcontentloaded'});
+  await page.goto(origin + base + hash, {waitUntil: 'domcontentloaded'});
   return {page, requests, responses, assertQuiet() {
     assert.deepEqual(unexpected, []);
     assert.deepEqual(errors, []);
@@ -97,6 +98,44 @@ async function dashboard(t, initialResponses, {checkCsp = false} = {}) {
 function status(page, expected) {
   return page.waitForFunction(label => document.querySelector('#syncStatusText').textContent === label, expected);
 }
+
+test('official stories update in place and retain headlines on failure', async t => {
+  const key = 'data/official_updates.json';
+  const story = {source: 'ncsc', title: 'Earlier official headline', published_at: hoursAgo(2),
+    url: 'https://www.ncsc.gov.uk/news/earlier-headline'};
+  const snapshot = {checked_at: hoursAgo(0), sources: {ncsc: 'current', cisa: 'current'}, stories: [story]};
+  const {page, responses, assertQuiet} = await dashboard(t, {
+    'data/threats.json': [], 'data/intelligence_status.json': 404, 'data/flash_alert.json': 404, [key]: snapshot
+  }, {clock: true, hash: '#official-updates'});
+  const rows = page.locator('#officialUpdatesList li');
+  const earlier = page.getByRole('link', {name: story.title});
+  await earlier.waitFor();
+  await earlier.focus();
+
+  const latest = {...story, title: 'New official headline', url: 'https://www.ncsc.gov.uk/news/new-headline',
+    published_at: hoursAgo(1)};
+  responses[key] = {...snapshot, stories: [latest, story, {...story, url: 'https://www.ncsc.gov.uk.example.invalid/news/lookalike'},
+    {...story, url: 'javascript:alert(1)'}]};
+  await page.clock.fastForward(61000);
+  await page.getByRole('link', {name: latest.title}).waitFor();
+  assert.equal(await rows.count(), 2);
+  assert.match(await rows.first().innerText(), /New official headline\s+UK NCSC/);
+  assert.equal(await earlier.evaluate(link => document.activeElement === link), true);
+  assert.equal(new URL(page.url()).hash, '#official-updates');
+
+  responses[key] = {...snapshot, checked_at: hoursAgo(2),
+    sources: {ncsc: 'current', cisa: 'unavailable'}, stories: [latest, story]};
+  await page.clock.fastForward(61000);
+  await page.getByText(/Headlines may be stale.*US CISA/).waitFor();
+  responses[key] = 503;
+  await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/official_updates.json')
+      && response.status() === 503),
+    page.clock.fastForward(61000)
+  ]);
+  assert.equal(await rows.count(), 2);
+  assertQuiet();
+});
 
 function titles(page) {
   return page.locator('#threatFeedContainer [data-field="title"]');

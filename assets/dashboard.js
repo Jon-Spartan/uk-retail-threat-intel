@@ -713,8 +713,8 @@ function filterByMitreTechnique(techId) {
 // =========================================================================
 // 7. FLASH ALERT LOADER
 // =========================================================================
-async function fetchJson(name) {
-  const response = await fetch('data/' + name + '?t=' + Date.now());
+async function fetchJson(name, options) {
+  const response = await fetch('data/' + name + '?t=' + Date.now(), options);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error('Data request failed.');
   return response.json();
@@ -723,6 +723,80 @@ async function fetchJson(name) {
 function dateAge(value) {
   const elapsed = Date.now() - Date.parse(value);
   return Number.isFinite(elapsed) && elapsed >= -5 * 60 * 1000 ? elapsed : Infinity;
+}
+
+const officialPublishers = new Map([
+  ['ncsc', {label: 'UK NCSC', host: 'www.ncsc.gov.uk'}],
+  ['cisa', {label: 'US CISA', host: 'www.cisa.gov'}]
+]);
+const officialDate = new Intl.DateTimeFormat('en-GB', {dateStyle: 'medium', timeZone: 'Europe/London'});
+const officialCheckTime = new Intl.DateTimeFormat('en-GB', {
+  dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London'
+});
+let officialSnapshot = null;
+let officialRenderedStories = null;
+
+function renderOfficialStories(stories) {
+  const identity = JSON.stringify(stories);
+  if (identity === officialRenderedStories) return;
+  officialRenderedStories = identity;
+  const list = document.getElementById('officialUpdatesList');
+  const rows = [];
+  for (const story of stories.slice(0, 16)) {
+    const publisher = officialPublishers.get(story?.source);
+    const url = safeHttpUrl(story?.url);
+    const published = Date.parse(story?.published_at);
+    if (!publisher || !url || !Number.isFinite(published) ||
+        typeof story.title !== 'string' || !story.title.trim() || story.title.length > 240) continue;
+    if (new URL(url).origin !== 'https://' + publisher.host) continue;
+
+    const row = textElement('li', '', 'border-t border-slate-200 py-2 dark:border-slate-800');
+    const link = textElement('a', story.title, 'text-sm font-semibold text-sky-700 hover:underline dark:text-sky-300');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    const byline = textElement('div', publisher.label + ' · ', 'text-xs text-slate-600 dark:text-slate-400');
+    const time = textElement('time', officialDate.format(published));
+    time.dateTime = story.published_at;
+    byline.append(time);
+    row.append(link, byline);
+    rows.push(row);
+  }
+  const focusedLink = list.contains(document.activeElement) ? document.activeElement.href : null;
+  list.replaceChildren(...rows);
+  if (focusedLink) {
+    [...list.querySelectorAll('a')].find(link => link.href === focusedLink)?.focus({preventScroll: true});
+  }
+}
+
+async function loadOfficialUpdates() {
+  let reachable = false;
+  try {
+    const snapshot = await fetchJson('official_updates.json', {signal: AbortSignal.timeout(10000)});
+    if (Array.isArray(snapshot?.stories) && Number.isFinite(Date.parse(snapshot.checked_at))) {
+      officialSnapshot = snapshot;
+      reachable = true;
+    }
+  } catch {
+    // Keep the last rendered headlines if the network or publication fails.
+  }
+  const status = document.getElementById('officialUpdatesStatus');
+  let message = 'Official headlines are currently unavailable.';
+  if (officialSnapshot) {
+    const {checked_at: checkedAt, stories, sources} = officialSnapshot;
+    renderOfficialStories(stories);
+    const unavailable = [...officialPublishers].filter(([id]) => sources?.[id] !== 'current')
+      .map(([, publisher]) => publisher.label);
+    const details = [];
+    if (!reachable || dateAge(checkedAt) > 60 * 60 * 1000) details.push('Headlines may be stale.');
+    if (unavailable.length) {
+      details.push('Source unavailable: ' + unavailable.join(', ') + '. Showing retained headlines where available.');
+    }
+    if (!document.getElementById('officialUpdatesList').childElementCount) details.push('No recent headlines in this snapshot.');
+    details.push('Sources last checked ' + officialCheckTime.format(Date.parse(checkedAt)) + ' (UK time).');
+    message = details.join(' ');
+  }
+  if (status.textContent !== message) status.textContent = message;
 }
 
 function setCollectionStatus(label, message, timestamp) {
@@ -1086,10 +1160,12 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('hashchange', showDashboardView);
   // 1. Initial Load
   fetchThreatTelemetry();
+  loadOfficialUpdates();
 
   // 2. Automated background poller every 60 seconds
   if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   pollIntervalTimer = setInterval(() => {
     fetchThreatTelemetry(false);
+    loadOfficialUpdates();
   }, 60000);
 });

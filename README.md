@@ -48,7 +48,11 @@ No environment variables are required for the initial preview, tests or collecti
 
 ## Using the dashboard
 
-Open **CISA KEV** to check the shortlist and filter vulnerabilities. Search, My Stack and CSV export apply to the catalogue results. Open **Stories** for Retail watch, Cyber watch and the weekly roundup. Links to individual story sections open that view directly.
+Open **CISA KEV** to check the shortlist and filter vulnerabilities. Search, My Stack and CSV export apply to the catalogue results. Open **Stories** for official headlines, Retail watch, Cyber watch and the weekly roundup. Links to individual story sections open that view directly.
+
+Leave **Latest from official sources** open on a screen to see new headlines appear automatically. GitHub Actions checks the NCSC and CISA feeds on the existing 15-minute schedule, and the open page checks for published updates once a minute. Actions and Pages delays can extend that interval. The panel shows up to eight headlines per source from the past 30 days, newest first. If a source fails, the latest eligible headlines from that source stay visible with an availability notice. The browser marks the snapshot as potentially stale after one hour or when it cannot retrieve a fresh copy.
+
+Run `python -m official_updates` from the repository root to collect headlines locally using the existing locked Python dependencies. The module writes optional `data/official_updates.json`, which passes through the same publication validation as the KEV dataset. Headline metadata stays separate from KEV results, alerts, exports and AI briefing inputs.
 
 **Start here** shows up to three recent records with verified evidence and a source link. It puts structured My Stack matches first, then items first observed by the platform since this browser’s last successful visit, then the existing sector priority score. The shortlist is unavailable when collection data is stale or cannot be verified. Its visit timestamp stays in the browser.
 

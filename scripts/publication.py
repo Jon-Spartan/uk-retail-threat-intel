@@ -20,10 +20,12 @@ from briefings import (
     load_briefing_pair, production_cve, utc_time,
 )
 from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid, product_entry
+from official_updates import FILENAME as OFFICIAL_UPDATES_FILE, validate_updates
 
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
 OPTIONAL = (
+    OFFICIAL_UPDATES_FILE,
     "flash_alert.json",
     "daily_summary.md", "daily_summary_date.txt", "daily_briefing.json",
     "weekly_summary.md", "weekly_briefing.json",
@@ -332,6 +334,8 @@ def validate_rss(path, records):
 
 def validate_data(directory, allow_legacy=False, *, strict=True):
     files = data_files(directory, strict=strict)
+    if OFFICIAL_UPDATES_FILE in files:
+        validate_updates(read_json(files[OFFICIAL_UPDATES_FILE]))
     records = read_json(files["threats.json"])
     metadata = validate_status(files)
     validate_records(records, allow_legacy=allow_legacy, require_identity="feeds" in metadata["collection"])
