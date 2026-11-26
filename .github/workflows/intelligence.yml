@@ -2,7 +2,8 @@ name: Collect and publish UK retail intelligence
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    # Avoid the start of the hour, when GitHub reports higher scheduler load.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
     inputs:
       mode:

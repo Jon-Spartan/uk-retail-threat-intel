@@ -50,6 +50,8 @@ No environment variables are required for the initial preview, tests or collecti
 
 ## Using the dashboard
 
+Hosted collection is scheduled at minutes 07, 22, 37 and 52 of each hour. The dashboard’s sync button checks the latest published snapshot. If its timestamp is stale, a maintainer can start **Collect and publish UK retail intelligence** from GitHub Actions on the default branch and verify that Pages serves a newer collection timestamp.
+
 Open **CISA KEV** to check the shortlist and filter vulnerabilities. Search, My Stack and CSV export apply to the catalogue results. Open **Stories** for official headlines, Retail watch, Cyber watch and the weekly roundup. Links to individual story sections open that view directly.
 
 Open **Executive** for the public sector briefing. It uses the same validated vulnerability and collection status files as CISA KEV, plus the reviewed Retail Watch notes. It uses no My Stack preferences and requires no AI key. The **Priority watch** label means a current, complete snapshot includes a documented retail-relevant record scoring at least 50. **Not assessed** is shown when that condition is unsupported. This is a project monitoring label based on the available evidence.
