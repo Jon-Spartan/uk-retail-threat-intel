@@ -35,7 +35,9 @@ No environment variables are required for the initial preview, tests or collecti
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Local process environment or GitHub Actions repository secret | Enables AI-assisted selection. Briefings are unavailable without a key. |
 | `DASHBOARD_URL` | Local process environment or GitHub Actions repository variable | Public dashboard URL for RSS and optional local notifications. RSS defaults to the project repository URL. |
-| `WEBHOOK_URL` | Local process environment only | Optional notification endpoint. `GOOGLE_CHAT_WEBHOOK_URL` and `SLACK_WEBHOOK_URL` are fallbacks. Webhook delivery is disabled in GitHub Actions. |
+| `WEBHOOK_URL` | Local process environment only | Optional endpoint for the local notification outbox. `GOOGLE_CHAT_WEBHOOK_URL` and `SLACK_WEBHOOK_URL` are local fallbacks. |
+| `GOOGLE_CHAT_WEBHOOK_URL` | GitHub Actions repository secret | The Google Chat incoming webhook for the hosted flash-alert job. |
+| `ENABLE_GOOGLE_CHAT_FLASH_ALERTS` | GitHub Actions repository variable | Set to `true` to enable hosted delivery after configuring the webhook. |
 | `NOTIFICATION_STATE_DIR` | Local process environment only | Optional persistent private directory outside the checkout and public output root. The default is `~/.uk-retail-threat-intel`. |
 | `ENABLE_PAGES_PUBLICATION` | GitHub Actions repository variable | Set to `true` only after release approval. It gates Pages artifact packaging and deployment. |
 
@@ -57,6 +59,16 @@ Open **Cyber news and research** for recent press links and automatically collec
 Run `python -m press_updates` to collect the SANS headline feed and stage the reviewed press links in `data/press_updates.json`. This command uses the existing locked dependencies and, optionally, the `GEMINI_API_KEY` GitHub Actions secret or local environment variable. For previously published fallback headings, collection retries AI selection on the first run of a new UTC day.
 
 Run `python -m official_updates` from the repository root to collect headlines locally using the existing locked Python dependencies. The module writes optional `data/official_updates.json`, which passes through the same publication validation as the KEV dataset. Headline metadata stays separate from KEV results, alerts, exports and AI briefing inputs.
+
+### Google Chat flash alerts
+
+Create an incoming webhook in the chosen Google Chat space. Store the copied URL directly in the repository's Actions secret `GOOGLE_CHAT_WEBHOOK_URL`. Set the repository Actions variable `ENABLE_GOOGLE_CHAT_FLASH_ALERTS` to `true` and run the intelligence workflow on the default branch or wait for the next scheduled run. [Google Chat webhook setup](https://developers.google.com/workspace/chat/quickstart/webhooks)
+
+The default-branch notification job runs after publication validation. It considers CISA KEV additions listed in the last two days and first observed by the collector in the last two hours. Critical severity or a sector priority of at least 50 makes a KEV a red alert. Other recent additions are labelled new KEVs. Old or retained entries are skipped. Messages link to the official source and do not require Gemini.
+
+Before a KEV listing, editors can add a critical advisory to `editorial/urgent-vulnerabilities.json`. Verify the public CVE and the score of 9.0–10.0 in the primary advisory. Set the fields `cve`, `product`, `cvss`, `advisory_url`, `reviewed_at` (UTC), and `exploitation` (`confirmed` only when supported by the cited advisory, otherwise `unconfirmed`). The review qualifies for two hours after `reviewed_at`. A later KEV listing can produce a separate confirmation.
+
+Hosted delivery uses a stable Google Chat message ID per CVE and alert type. Later eligible runs can retry a failed or unconfirmed send with the same ID. Chat handles message identity in the space. No delivery history belongs in the Pages artifact. Failed notification jobs appear in Actions and do not block Pages deployment. Verify receipt and duplicate handling in the intended space before relying on alerts for operational coverage. [Google Chat message IDs](https://developers.google.com/workspace/chat/api/reference/rest/v1/spaces.messages/create)
 
 **Start here** shows up to three recent records with verified evidence and a source link. It puts structured My Stack matches first, then items first observed by the platform since this browser’s last successful visit, then the existing sector priority score. The shortlist is unavailable when collection data is stale or cannot be verified. Its visit timestamp stays in the browser.
 
