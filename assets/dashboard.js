@@ -729,23 +729,30 @@ const officialPublishers = new Map([
   ['ncsc', {label: 'UK NCSC', host: 'www.ncsc.gov.uk'}],
   ['cisa', {label: 'US CISA', host: 'www.cisa.gov'}]
 ]);
+const pressPublishers = new Map([
+  ['bleeping', {label: 'Bleeping Computer', host: 'www.bleepingcomputer.com'}],
+  ['neowin', {label: 'Neowin', host: 'www.neowin.net'}],
+  ['securityweek', {label: 'SecurityWeek', host: 'www.securityweek.com'}],
+  ['sans', {label: 'SANS Internet Storm Center', host: 'isc.sans.edu'}]
+]);
 const officialDate = new Intl.DateTimeFormat('en-GB', {dateStyle: 'medium', timeZone: 'Europe/London'});
 const officialCheckTime = new Intl.DateTimeFormat('en-GB', {
   dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London'
 });
 let officialSnapshot = null;
-let officialRenderedStories = null;
+let pressSnapshot = null;
+const renderedStories = new WeakMap();
 
-function renderOfficialStories(stories) {
+function renderStoryRows(list, stories, publishers) {
   const identity = JSON.stringify(stories);
-  if (identity === officialRenderedStories) return;
-  officialRenderedStories = identity;
-  const list = document.getElementById('officialUpdatesList');
+  if (identity === renderedStories.get(list)) return;
+  renderedStories.set(list, identity);
   const rows = [];
   for (const story of stories.slice(0, 16)) {
-    const publisher = officialPublishers.get(story?.source);
+    const publisher = publishers.get(story?.source);
     const url = safeHttpUrl(story?.url);
-    const published = Date.parse(story?.published_at);
+    const publishedAt = story?.published_at ?? story?.date;
+    const published = Date.parse(publishedAt);
     if (!publisher || !url || !Number.isFinite(published) ||
         typeof story.title !== 'string' || !story.title.trim() || story.title.length > 240) continue;
     if (new URL(url).origin !== 'https://' + publisher.host) continue;
@@ -757,8 +764,16 @@ function renderOfficialStories(stories) {
     link.rel = 'noopener noreferrer';
     const byline = textElement('div', publisher.label + ' · ', 'text-xs text-slate-600 dark:text-slate-400');
     const time = textElement('time', officialDate.format(published));
-    time.dateTime = story.published_at;
+    time.dateTime = publishedAt;
     byline.append(time);
+    const evidence = safeHttpUrl(story.evidence_url);
+    if (evidence && new URL(evidence).protocol === 'https:') {
+      const reference = textElement('a', 'Primary source', 'underline underline-offset-4');
+      reference.href = evidence;
+      reference.target = '_blank';
+      reference.rel = 'noopener noreferrer';
+      byline.append(story.heading_kind === 'ai-assisted' ? ' · AI-assisted heading · ' : ' · Original heading · ', reference);
+    }
     row.append(link, byline);
     rows.push(row);
   }
@@ -784,7 +799,7 @@ async function loadOfficialUpdates() {
   let message = 'Official headlines are currently unavailable.';
   if (officialSnapshot) {
     const {checked_at: checkedAt, stories, sources} = officialSnapshot;
-    renderOfficialStories(stories);
+    renderStoryRows(document.getElementById('officialUpdatesList'), stories, officialPublishers);
     const unavailable = [...officialPublishers].filter(([id]) => sources?.[id] !== 'current')
       .map(([, publisher]) => publisher.label);
     const details = [];
@@ -794,6 +809,32 @@ async function loadOfficialUpdates() {
     }
     if (!document.getElementById('officialUpdatesList').childElementCount) details.push('No recent headlines in this snapshot.');
     details.push('Sources last checked ' + officialCheckTime.format(Date.parse(checkedAt)) + ' (UK time).');
+    message = details.join(' ');
+  }
+  if (status.textContent !== message) status.textContent = message;
+}
+
+async function loadPressUpdates() {
+  let reachable = false;
+  try {
+    const snapshot = await fetchJson('press_updates.json', {signal: AbortSignal.timeout(10000)});
+    if (Array.isArray(snapshot?.stories) && Number.isFinite(Date.parse(snapshot.checked_at))) {
+      pressSnapshot = snapshot;
+      reachable = true;
+    }
+  } catch {
+    // Keep the last validated headlines visible while the refresh is unavailable.
+  }
+  const status = document.getElementById('pressUpdatesStatus');
+  let message = 'Cyber news and research are currently unavailable.';
+  if (pressSnapshot) {
+    const list = document.getElementById('pressUpdatesList');
+    renderStoryRows(list, pressSnapshot.stories, pressPublishers);
+    const details = [];
+    if (!reachable || dateAge(pressSnapshot.checked_at) > 60 * 60 * 1000) details.push('Headlines may be stale.');
+    if (pressSnapshot.research !== 'current') details.push('SANS feed unavailable. Earlier research may still be shown.');
+    if (!list.childElementCount) details.push('No recent items in this snapshot.');
+    details.push('Research last checked ' + officialCheckTime.format(Date.parse(pressSnapshot.checked_at)) + ' (UK time).');
     message = details.join(' ');
   }
   if (status.textContent !== message) status.textContent = message;
@@ -1161,11 +1202,13 @@ window.addEventListener('DOMContentLoaded', () => {
   // 1. Initial Load
   fetchThreatTelemetry();
   loadOfficialUpdates();
+  loadPressUpdates();
 
   // 2. Automated background poller every 60 seconds
   if (pollIntervalTimer) clearInterval(pollIntervalTimer);
   pollIntervalTimer = setInterval(() => {
     fetchThreatTelemetry(false);
     loadOfficialUpdates();
+    loadPressUpdates();
   }, 60000);
 });

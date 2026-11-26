@@ -1,0 +1,32 @@
+[
+  {
+    "source": "bleeping",
+    "url": "https://www.bleepingcomputer.com/news/security/1password-customer-data-stolen-after-employee-github-account-breach/",
+    "evidence_url": "https://1password.com/blog/update-on-nov-2026-security-incident",
+    "date": "2026-11-25",
+    "headings": [
+      "1Password says some account records were copied and vaults were unaffected",
+      "1Password confirms account data theft and says customer vaults were unaffected"
+    ]
+  },
+  {
+    "source": "neowin",
+    "url": "https://www.neowin.net/news/edtech-company-turnitin-discloses-cyberattack-affecting-customer-facing-systems/",
+    "evidence_url": "https://helpcenter.turnitin.com/hc/en-us/articles/50603173309197-Letter-from-Turnitin-CEO-Chris-Caren-to-customers-on-23-November-2026",
+    "date": "2026-11-24",
+    "headings": [
+      "Turnitin investigates unauthorised activity on services used by customers",
+      "Turnitin says its systems stayed operational while it investigates a security incident"
+    ]
+  },
+  {
+    "source": "securityweek",
+    "url": "https://www.securityweek.com/european-commission-uncovers-data-breach-in-cyberattack-investigation/",
+    "evidence_url": "https://audiovisual.ec.europa.eu/en/media/video/I-298395",
+    "date": "2026-11-24",
+    "headings": [
+      "EU Academy users’ names and email addresses were exposed, Commission says",
+      "European Commission confirms personal data exposure at its online learning platform"
+    ]
+  }
+]

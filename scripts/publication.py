@@ -21,11 +21,13 @@ from briefings import (
 )
 from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid, product_entry
 from official_updates import FILENAME as OFFICIAL_UPDATES_FILE, validate_updates
+from press_updates import FILENAME as PRESS_UPDATES_FILE, validate_press
 
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
 OPTIONAL = (
     OFFICIAL_UPDATES_FILE,
+    PRESS_UPDATES_FILE,
     "flash_alert.json",
     "daily_summary.md", "daily_summary_date.txt", "daily_briefing.json",
     "weekly_summary.md", "weekly_briefing.json",
@@ -336,6 +338,8 @@ def validate_data(directory, allow_legacy=False, *, strict=True):
     files = data_files(directory, strict=strict)
     if OFFICIAL_UPDATES_FILE in files:
         validate_updates(read_json(files[OFFICIAL_UPDATES_FILE]))
+    if PRESS_UPDATES_FILE in files:
+        validate_press(read_json(files[PRESS_UPDATES_FILE]), restoring=allow_legacy)
     records = read_json(files["threats.json"])
     metadata = validate_status(files)
     validate_records(records, allow_legacy=allow_legacy, require_identity="feeds" in metadata["collection"])

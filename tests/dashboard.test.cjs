@@ -48,7 +48,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
   const requests = [];
   const unexpected = [];
   const errors = [];
-  const responses = {'data/official_updates.json': 404, ...initialResponses};
+  const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404, ...initialResponses};
   if (clock) await page.clock.install();
   if (checkCsp) {
     await page.addInitScript(() => {
@@ -134,6 +134,27 @@ test('official stories update in place and retain headlines on failure', async t
     page.clock.fastForward(61000)
   ]);
   assert.equal(await rows.count(), 2);
+  assertQuiet();
+});
+
+test('press links show their publisher, AI label and independent source', async t => {
+  const headline = 'Verified press heading';
+  const url = 'https://www.bleepingcomputer.com/news/security/verified-fixture/';
+  const evidence = 'https://issuer.example.invalid/incident';
+  const story = {source: 'bleeping', date: '2026-11-25', title: headline, url,
+    evidence_url: evidence, heading_kind: 'ai-assisted'};
+  const {page, assertQuiet} = await dashboard(t, {
+    'data/threats.json': [], 'data/intelligence_status.json': 404, 'data/flash_alert.json': 404,
+    'data/press_updates.json': {checked_at: hoursAgo(0), research: 'unavailable',
+      stories: [story, {...story, title: 'Redirect fixture', url: 'https://other.example.invalid/'}]}
+  }, {hash: '#press-updates'});
+  const link = page.getByRole('link', {name: headline});
+  await link.waitFor();
+  assert.equal(await link.getAttribute('href'), url);
+  assert.equal(await page.getByRole('link', {name: 'Primary source'}).getAttribute('href'), evidence);
+  assert.match(await page.locator('#pressUpdatesList').innerText(), /Bleeping Computer.*AI-assisted heading/);
+  assert.match(await page.locator('#pressUpdatesStatus').innerText(), /SANS feed unavailable/);
+  assert.equal(await page.getByRole('link', {name: 'Redirect fixture'}).count(), 0);
   assertQuiet();
 });
 

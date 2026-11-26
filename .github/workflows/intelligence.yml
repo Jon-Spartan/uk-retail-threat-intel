@@ -74,6 +74,10 @@ jobs:
         run: python threat_intel_pipeline.py
       - name: Collect official story headlines
         run: python -m official_updates
+      - name: Collect cyber news links
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m press_updates
       - name: Stage candidate data
         run: python -m scripts.publication stage-data data "$RUNNER_TEMP/intelligence-candidate"
       - name: Scan candidate data for secrets
