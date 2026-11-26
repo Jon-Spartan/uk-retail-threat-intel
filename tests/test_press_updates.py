@@ -59,3 +59,17 @@ class PressUpdatesTests(unittest.TestCase):
             ]:
                 model.return_value.text = payload
                 self.assertEqual(choose_headings({"id": ["First", "Second"]}), expected)
+
+    def test_reviewed_fallback_can_be_upgraded_after_key_becomes_available(self):
+        with TemporaryDirectory() as temporary:
+            path = Path(temporary) / "press_updates.json"
+            with patch("feed_transport.download_source", return_value=FEED), patch(
+                "press_updates.choose_headings", return_value={}
+            ) as choose:
+                refresh_press(path, CHECKED)
+                refresh_press(path, CHECKED + timedelta(minutes=15))
+                choose.assert_called_with({})
+                choose.return_value = dict.fromkeys(load_editorial(), 1)
+                refresh_press(path, CHECKED + timedelta(days=1))
+            upgraded = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual({item["heading_kind"] for item in upgraded["stories"]}, {"publisher", "ai-assisted"})

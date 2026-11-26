@@ -54,7 +54,7 @@ Leave **Latest from official sources** open on a screen to see new headlines app
 
 Open **Cyber news and research** for recent press links and automatically collected SANS Internet Storm Center diary headlines. The same schedule and browser refresh apply. Editors add press links to `editorial/press-links.json` with a dated primary disclosure and two independently written, fact-checked heading options. Gemini may choose an option for a new story. Publication accepts only the reviewed headings, and uses the first option if AI selection is unavailable. The press websites and their wording are outside the collector and AI input. The panel shows up to six press links and six research headlines from the past 30 days.
 
-Run `python -m press_updates` to collect the SANS headline feed and stage the reviewed press links in `data/press_updates.json`. This command uses the existing locked dependencies and, optionally, the existing `GEMINI_API_KEY`. No new service or browser credentials are required.
+Run `python -m press_updates` to collect the SANS headline feed and stage the reviewed press links in `data/press_updates.json`. This command uses the existing locked dependencies and, optionally, the `GEMINI_API_KEY` GitHub Actions secret or local environment variable. For previously published fallback headings, collection retries AI selection on the first run of a new UTC day.
 
 Run `python -m official_updates` from the repository root to collect headlines locally using the existing locked Python dependencies. The module writes optional `data/official_updates.json`, which passes through the same publication validation as the KEV dataset. Headline metadata stays separate from KEV results, alerts, exports and AI briefing inputs.
 

@@ -197,9 +197,11 @@ def refresh_press(path, checked=None):
     active = sorted(editorial.items(), key=lambda item: (item[1]["date"], item[0]), reverse=True)
     active = [(identifier, record) for identifier, record in active
               if checked.date() - RECENT <= date.fromisoformat(record["date"]) <= checked.date()][:LIMIT]
+    retry_fallback = previous and utc_time(previous["checked_at"]).date() < checked.date()
     options = {identifier: record["headings"] for identifier, record in active
                if (prior.get(identifier, {}).get("title") not in record["headings"]
-                   or any(prior[identifier][field] != record[field] for field in ("source", "date", "evidence_url")))}
+                   or any(prior[identifier][field] != record[field] for field in ("source", "date", "evidence_url"))
+                   or (retry_fallback and prior[identifier]["heading_kind"] == "project"))}
     choices = choose_headings(options)
     stories = list(research)
     for identifier, record in active:
