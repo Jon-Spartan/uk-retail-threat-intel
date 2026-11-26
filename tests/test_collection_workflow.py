@@ -114,6 +114,15 @@ class CollectionWorkflowTests(unittest.TestCase):
             public = {file.relative_to("staged-site").as_posix()
                       for file in Path("staged-site").rglob("*") if file.is_file()}
             self.assertEqual(public, set(ASSETS) | {f"data/{name}" for name in files})
+            first_collected = read_json(data / "intelligence_status.json")["collection"]["data_updated_at"]
+            pipeline.run_collection()
+            files = validate_release_data(data)
+            comparison = read_json(files["executive_previous.json"])
+            self.assertEqual(comparison["previous_at"], first_collected)
+            self.assertEqual(comparison["record_ids"], [records[0]["id"]])
+            pipeline.write_json(files["executive_previous.json"], {**comparison, "record_ids": ["unapproved"]})
+            with self.assertRaisesRegex(ValueError, "Invalid executive comparison snapshot"):
+                validate_release_data(data)
             publisher_feed.assert_not_called()
 
     def test_kev_uses_valid_dated_entries_and_keeps_historical_membership(self):

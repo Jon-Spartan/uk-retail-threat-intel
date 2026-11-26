@@ -16,6 +16,7 @@ from public_urls import validated_http_url
 
 
 LOOKBACK_DAYS = 7
+EXECUTIVE_PREVIOUS_FILE = "executive_previous.json"
 LONDON = "Europe/London"
 TRACKING_PARAMETERS = {"fbclid", "gclid", "dclid", "msclkid", "mc_cid", "mc_eid"}
 

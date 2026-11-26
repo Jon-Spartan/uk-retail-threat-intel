@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 from uuid import UUID
 from xml.etree import ElementTree
 
-from operations import canonical_article_url, feed_id, record_id
+from operations import EXECUTIVE_PREVIOUS_FILE, canonical_article_url, feed_id, record_id
 from public_urls import validated_http_url
 from briefings import (
     KEV_PUBLISHER, LEGACY_STATUS_FIELDS, STATUS_FIELDS, discard_legacy_briefings, kev_article_url,
@@ -26,6 +26,7 @@ from press_updates import FILENAME as PRESS_UPDATES_FILE, validate_press
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
 OPTIONAL = (
+    EXECUTIVE_PREVIOUS_FILE,
     OFFICIAL_UPDATES_FILE,
     PRESS_UPDATES_FILE,
     "flash_alert.json",
@@ -37,6 +38,7 @@ ASSETS = (
     "SCORING.md",
     "SOURCES.md",
     "assets/dashboard.js",
+    "assets/executive.js",
     "assets/theme.js",
     "assets/dashboard.css",
     "assets/inter.woff2",
@@ -334,6 +336,19 @@ def validate_rss(path, records):
     require(actual == expected, "RSS items do not match the dashboard dataset.")
 
 
+def validate_executive_previous(document, collection):
+    require(isinstance(document, dict) and set(document) == {"previous_at", "current_at", "record_ids"},
+            "Invalid executive comparison fields.")
+    previous, current = (utc_time(document[key]) for key in ("previous_at", "current_at"))
+    ids = document["record_ids"]
+    require(previous and current and previous < current and collection["state"] == "current"
+            and document["current_at"] == collection["data_updated_at"]
+            and isinstance(ids, list) and len(ids) <= 1000
+            and all(isinstance(item, str) and re.fullmatch(r"(?:cisa-kev-cve_[0-9]{4}_[0-9]{4,15}|src-[0-9a-f]{64})", item)
+                    for item in ids) and ids == sorted(set(ids)),
+            "Invalid executive comparison snapshot.")
+
+
 def validate_data(directory, allow_legacy=False, *, strict=True):
     files = data_files(directory, strict=strict)
     if OFFICIAL_UPDATES_FILE in files:
@@ -342,6 +357,8 @@ def validate_data(directory, allow_legacy=False, *, strict=True):
         validate_press(read_json(files[PRESS_UPDATES_FILE]), restoring=allow_legacy)
     records = read_json(files["threats.json"])
     metadata = validate_status(files)
+    if EXECUTIVE_PREVIOUS_FILE in files:
+        validate_executive_previous(read_json(files[EXECUTIVE_PREVIOUS_FILE]), metadata["collection"])
     validate_records(records, allow_legacy=allow_legacy, require_identity="feeds" in metadata["collection"])
     if "flash_alert.json" in files:
         flash = read_json(files["flash_alert.json"])

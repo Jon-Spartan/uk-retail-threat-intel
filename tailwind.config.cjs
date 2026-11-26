@@ -1,5 +1,5 @@
 module.exports = {
-  content: ['./index.html', './assets/dashboard.js'],
+  content: ['./index.html', './assets/dashboard.js', './assets/executive.js'],
   darkMode: 'class',
   theme: {
     extend: {

@@ -6,8 +6,9 @@
   <title>UK Retail Cyber Threat Intelligence (CTI) Hub</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
   <script src="./assets/theme.js"></script>
-  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112602">
-  <script src="./assets/dashboard.js?t=2026112602" defer></script>
+  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112603">
+  <script src="./assets/executive.js?t=2026112603" defer></script>
+  <script src="./assets/dashboard.js?t=2026112603" defer></script>
 </head>
 <body class="min-h-screen flex flex-col antialiased bg-slate-50 text-slate-800 dark:bg-[#07090e] dark:text-slate-100 selection:bg-sky-500 selection:text-white">
 
@@ -39,6 +40,7 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <nav aria-label="Dashboard views" class="flex flex-wrap items-center gap-1.5">
+          <a data-dashboard-link="executive" href="#executive" class="dashboard-view-link">Executive</a>
           <a id="tabFeedBtn" data-dashboard-link="kev" aria-current="page" href="#kev" class="dashboard-view-link">CISA KEV</a>
           <a id="tabStoriesBtn" data-dashboard-link="stories" href="#stories" class="dashboard-view-link">Stories</a>
           <a id="tabMitreBtn" data-dashboard-link="matrix" href="#tabMitreContent" class="dashboard-view-link">
@@ -61,6 +63,78 @@
 
   <!-- MAIN WORKSPACE -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <section data-dashboard-view="executive" aria-labelledby="executive" class="hidden space-y-5">
+      <div class="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-sky-950 p-5 text-white shadow-sm sm:p-6">
+        <div class="grid gap-5 lg:grid-cols-3 lg:items-start">
+          <div class="min-w-0 space-y-2 lg:col-span-2">
+            <h2 id="executive" class="dashboard-anchor text-2xl font-bold tracking-tight sm:text-3xl">Executive Intelligence Dashboard</h2>
+            <p id="executiveSummary" role="status" class="max-w-3xl text-sm leading-relaxed text-slate-200">Waiting for public-source intelligence.</p>
+            <p class="text-xs text-sky-200">Public-source sector monitoring. Use local evidence to assess organisational exposure.</p>
+          </div>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-slate-600 pt-4 text-sm lg:grid-cols-1 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            <div>
+              <dt class="text-xs text-sky-200">Current retail threat level</dt>
+              <dd id="executiveLevel" class="mt-0.5 font-semibold">Not assessed</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-sky-200">Intelligence confidence</dt>
+              <dd id="executiveConfidence" class="mt-0.5 font-semibold">Unavailable</dd>
+            </div>
+            <div class="col-span-2 lg:col-span-1">
+              <dt class="text-xs text-sky-200">Last updated</dt>
+              <dd id="executiveUpdated" class="mt-0.5 font-mono text-xs">Unavailable</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <dl id="executiveMetrics" aria-label="Executive indicators" class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"></dl>
+
+      <div class="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div class="grid min-w-0 gap-4">
+          <section aria-labelledby="executiveThreatsTitle" class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+            <h3 id="executiveThreatsTitle" class="text-lg font-bold">Top threats for UK retail</h3>
+            <p id="executiveThreatsNote" class="mt-1 text-sm text-slate-600 dark:text-slate-300"></p>
+            <ul id="executiveThreats" class="mt-3 divide-y divide-slate-200 dark:divide-slate-800"></ul>
+          </section>
+          <section aria-labelledby="executiveKevTitle" class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+            <h3 id="executiveKevTitle" class="text-lg font-bold">Active exploitation and KEV watch</h3>
+            <p id="executiveKevNote" class="mt-1 text-sm text-slate-600 dark:text-slate-300"></p>
+            <ul id="executiveKev" class="mt-3 divide-y divide-slate-200 dark:divide-slate-800"></ul>
+          </section>
+        </div>
+        <div class="grid min-w-0 gap-4">
+          <section aria-labelledby="executiveActionsTitle" class="rounded-xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-900 dark:bg-sky-950/40">
+            <h3 id="executiveActionsTitle" class="text-lg font-bold">Recommended actions this week</h3>
+            <p id="executiveActionsNote" class="mt-1 text-sm text-slate-600 dark:text-slate-300"></p>
+            <ol id="executiveActions" class="mt-3 list-decimal space-y-3 pl-5 text-sm"></ol>
+          </section>
+          <section aria-labelledby="executiveIncidentsTitle" class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+            <h3 id="executiveIncidentsTitle" class="text-lg font-bold">Retail sector incident watch</h3>
+            <p id="executiveIncidentsNote" class="mt-1 text-sm text-slate-600 dark:text-slate-300"></p>
+            <ul id="executiveIncidents" class="mt-3 divide-y divide-slate-200 dark:divide-slate-800"></ul>
+            <a href="#retail-watch" class="text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Open Retail Watch</a>
+          </section>
+        </div>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-3">
+        <section aria-labelledby="executiveChangesTitle" class="min-w-0 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <h3 id="executiveChangesTitle" class="text-lg font-bold">What changed since the last snapshot</h3>
+          <p id="executiveChanges" class="mt-2 text-sm text-slate-600 dark:text-slate-300">Change tracking not yet available.</p>
+        </section>
+        <section aria-labelledby="executiveObservationsTitle" class="min-w-0 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <h3 id="executiveObservationsTitle" class="text-lg font-bold">Strategic observations</h3>
+          <ul id="executiveObservations" class="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-600 dark:text-slate-300"></ul>
+        </section>
+        <section aria-labelledby="executiveHealthTitle" class="min-w-0 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <h3 id="executiveHealthTitle" class="text-lg font-bold">Confidence and source health</h3>
+          <ul id="executiveHealth" class="mt-2 space-y-2 text-sm text-slate-600 dark:text-slate-300"></ul>
+          <a href="./SCORING.md" class="mt-3 inline-block text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Read the scoring method</a>
+        </section>
+      </div>
+    </section>
 
     <section id="tabFeedContent" data-dashboard-view="kev" aria-labelledby="kev" class="space-y-6">
       <div class="space-y-2">
@@ -299,27 +373,27 @@
         </div>
 
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <article class="flex flex-col gap-3 rounded-xl border border-slate-700 bg-gradient-to-br from-slate-900 to-sky-950 p-5 text-white shadow-sm sm:col-span-2 lg:col-span-1">
+          <article data-retail-development="development" data-retail-relevance="Online shopping" class="flex flex-col gap-3 rounded-xl border border-slate-700 bg-gradient-to-br from-slate-900 to-sky-950 p-5 text-white shadow-sm sm:col-span-2 lg:col-span-1">
             <p class="text-xs font-medium text-sky-200">Shopping scams · <time datetime="2026-11-24">24 November 2026</time></p>
             <h4 class="text-lg font-semibold leading-tight">Give shoppers a way back to the real store</h4>
-            <p class="text-sm leading-relaxed text-slate-200">The NCSC reviewed its online shopping guidance just before Black Friday. It advises shoppers to find a retailer’s official site themselves and use passkeys or two-step verification where available.</p>
-            <p class="text-sm leading-relaxed text-slate-200"><strong>For retailers</strong> Make order tracking and scam reporting easy to find on your own site.</p>
+            <p data-retail-summary class="text-sm leading-relaxed text-slate-200">The NCSC reviewed its online shopping guidance just before Black Friday. It advises shoppers to find a retailer’s official site themselves and use passkeys or two-step verification where available.</p>
+            <p class="text-sm leading-relaxed text-slate-200"><strong>For retailers</strong> <span data-retail-action>Make order tracking and scam reporting easy to find on your own site.</span></p>
             <a href="https://www.ncsc.gov.uk/guidance/shopping-online-securely" class="mt-auto text-sm font-medium text-sky-200 underline underline-offset-4">NCSC shopping guidance</a>
           </article>
 
-          <article class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+          <article data-retail-development="incident" data-retail-relevance="Retail supplier" class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
             <p class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Supplier incidents · <time datetime="2026-11-23">23 November 2026</time></p>
             <h4 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">When a supplier reports a breach</h4>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The Register reported a breach at an online supplier to Next. The retailer said it had found no evidence that customer personal data was affected at the time of its statement. Its investigation was still open.</p>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Agree who confirms the impact and who answers customers when a supplier reports an incident.</p>
+            <p data-retail-summary class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The Register reported a breach at an online supplier to Next. The retailer said it had found no evidence that customer personal data was affected at the time of its statement. Its investigation was still open.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> <span data-retail-action>Agree who confirms the impact and who answers customers when a supplier reports an incident.</span></p>
             <a href="https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">The Register’s reporting</a>
           </article>
 
-          <article class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
+          <article data-retail-development="incident" data-retail-relevance="Payment services" class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
             <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Payment data · <time datetime="2026-11-20">20 November 2026</time></p>
             <h4 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">Payment data after checkout</h4>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> Ask payment providers which card data they retain and how they notify affected customers.</p>
+            <p data-retail-summary class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> <span data-retail-action>Ask payment providers which card data they retain and how they notify affected customers.</span></p>
             <p class="border-l-2 border-emerald-400 pl-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               <strong>Disclosure checked · <time datetime="2026-11-25">25 November</time></strong> The provider’s FAQ says card security codes were involved in a minority of cases. Affected customers should check their own notification for details.
             </p>

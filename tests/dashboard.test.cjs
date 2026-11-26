@@ -3,11 +3,12 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const {after, before, test} = require('node:test');
 const {chromium} = require('playwright');
+const {buildModel} = require('../assets/executive.js');
 
 const site = path.resolve(process.env.DASHBOARD_TEST_SITE || 'public-site');
 const origin = 'https://pages.example.invalid';
 const base = '/uk-retail-threat-intel/';
-const allowedFiles = new Set(['index.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/theme.js',
+const allowedFiles = new Set(['index.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico']);
 const privateKeyword = 'private-keyword-fixture';
 const sourceUrl = 'https://news.example.invalid/checkout';
@@ -48,7 +49,8 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
   const requests = [];
   const unexpected = [];
   const errors = [];
-  const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404, ...initialResponses};
+  const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404,
+    'data/executive_previous.json': 404, ...initialResponses};
   if (clock) await page.clock.install();
   if (checkCsp) {
     await page.addInitScript(() => {
@@ -98,6 +100,92 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
 function status(page, expected) {
   return page.waitForFunction(label => document.querySelector('#syncStatusText').textContent === label, expected);
 }
+
+function executiveKev(sequence, date, overrides = {}) {
+  const id = 'CVE-2026-' + sequence;
+  return {...report, id: 'cisa-kev-cve_2026_' + sequence, title: 'Public advisory fixture ' + sequence,
+    source: 'CISA KEV Catalog', url: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=' + id,
+    _timestamp: Date.parse(date) / 1000, first_seen_at: date,
+    affected_products: [{vendor: 'Fixture vendor', product: 'Fixture gateway', source: 'cisa_kev'}],
+    classification: {version: 1, components: {}, score: 70, exploitation: 'confirmed',
+      relevance: 'uk_direct', confidence: 'catalogue', vulnerabilities: [{id, kev: true}]}, ...overrides};
+}
+
+test('executive model ranks verified retail evidence, deduplicates exploitation and limits editorial claims', () => {
+  const now = Date.parse('2026-11-26T12:00:00Z');
+  const collected = '2026-11-26T11:30:00Z';
+  const metadata = {collection: {state: 'current', data_updated_at: collected, last_success_at: collected}};
+  const eligible = executiveKev('10001', collected);
+  const general = executiveKev('10002', collected, {classification: {...eligible.classification, relevance: 'unestablished',
+    score: 95, vulnerabilities: [{id: 'CVE-2026-10002', kev: true}]}});
+  const repeated = {...eligible, id: 'src-' + 'a'.repeat(64),
+    classification: {...eligible.classification, relevance: 'sector', score: 53}};
+  const retained = executiveKev('10003', collected, {carried_forward: true});
+  const note = {title: 'Public notice fixture', summary: 'Summary from the source.', source: 'Disclosure',
+    relevance: 'Payment services', action: 'Check the notification process.', date: '2026-11-25', kind: 'incident',
+    url: 'https://issuer.example.invalid/notice'};
+  const previous = {current_at: collected, previous_at: '2026-11-26T10:30:00Z',
+    record_ids: [eligible.id, 'cisa-kev-cve_2026_10009']};
+  const input = {now, metadata, previous, items: [general, retained, repeated, eligible],
+    stories: [note, {...note, kind: 'development', url: note.url + '-update'},
+      {...note, url: note.url + '-future', date: '2026-12-01'},
+      {...note, url: 'javascript:alert(1)'}],
+    evidenceFor: item => item.classification,
+    safeUrl: value => value.startsWith('https://') ? value : null};
+  const model = buildModel(input);
+  assert.equal(model.level, 'Priority watch');
+  assert.equal(model.topThreats[0].title, eligible.title);
+  assert.ok(model.topThreats.every(item => item.related));
+  assert.equal(model.metrics[1][1], '1');
+  assert.equal(model.metrics[2][1], '2');
+  assert.equal(model.metrics[3][1], '1');
+  assert.equal(model.incidents.length, 2);
+  assert.match(model.changes, /3 records added and 1 record left/);
+  assert.equal(buildModel({...input, previous: {...previous, current_at: previous.previous_at}}).changes,
+    'Change tracking not yet available.');
+  const stale = buildModel({...input, now: now + 2 * 3600000});
+  assert.equal(stale.metrics[0][1], 'Unavailable');
+  assert.equal(stale.metrics[5][1], 'Stale');
+  assert.equal(stale.level, 'Not assessed');
+  assert.equal(stale.kev.length, 0);
+  assert.equal(stale.actions.length, 1);
+  const incomplete = buildModel({...input, metadata: {collection: {...metadata.collection, state: 'partial'}}});
+  assert.equal(incomplete.level, 'Not assessed');
+  assert.equal(incomplete.metrics[5][1], 'Incomplete');
+  assert.match(incomplete.changes, /Comparison unavailable/);
+  const generalOnly = buildModel({...input, items: [general]});
+  assert.equal(generalOnly.metrics[1][1], '0');
+  assert.equal(generalOnly.topThreats.length, 0);
+  assert.match(generalOnly.kevNote, /Retail relevance is unestablished/);
+});
+
+test('executive view opens on mobile, compares published snapshots and withholds stale KEV actions', async t => {
+  const current = collection('current');
+  const item = executiveKev('10001', hoursAgo(1));
+  const board = await dashboard(t, {
+    'data/threats.json': [item], 'data/intelligence_status.json': {collection: current}, 'data/flash_alert.json': 404,
+    'data/executive_previous.json': {current_at: current.data_updated_at, previous_at: hoursAgo(2), record_ids: []}
+  });
+  const {page, requests, responses} = board;
+  await page.setViewportSize({width: 390, height: 845});
+  await status(page, 'CURRENT');
+  assert.equal(requests.some(request => request.url.includes('executive_previous.json')), false);
+  await page.getByRole('link', {name: 'Executive', exact: true}).click();
+  await page.getByText(/1 record added and 0 records left/).waitFor();
+  assert.equal(await page.getByRole('heading', {name: 'Executive Intelligence Dashboard'}).isVisible(), true);
+  assert.equal(await page.locator('#searchInput').isVisible(), false);
+  assert.equal(await page.locator('#executiveMetrics dd').count(), 12);
+  assert.match(await page.locator('#executiveThreats').innerText(), /Priority 70\/100.*Online retail/s);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  responses['data/intelligence_status.json'] = {collection: collection('current', 3)};
+  await page.locator('#liveSyncBtn').click();
+  await page.getByText('The vulnerability snapshot is stale. Current threat counts are withheld.').waitFor();
+  assert.equal(await page.locator('#executiveThreats li').count(), 0);
+  assert.equal(await page.locator('#executiveKev li').count(), 0);
+  await page.getByRole('link', {name: 'CISA KEV', exact: true}).click();
+  await page.locator('#searchInput').waitFor();
+  board.assertQuiet();
+});
 
 test('official stories update in place and retain headlines on failure', async t => {
   const key = 'data/official_updates.json';

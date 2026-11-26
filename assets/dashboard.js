@@ -921,6 +921,24 @@ function isThreatRecord(record) {
     (Array.isArray(record[key]) && record[key].every(value => typeof value === 'string')));
 }
 
+let executiveInputs;
+let executiveRequest;
+
+async function refreshExecutiveView() {
+  const panel = document.querySelector('[data-dashboard-view="executive"]');
+  const inputs = executiveInputs;
+  if (!inputs || !panel || panel.classList.contains('hidden') || executiveRequest === inputs) return;
+  executiveRequest = inputs;
+  const previous = inputs.items && inputs.metadata?.collection?.state === 'current'
+    ? await fetchJson('executive_previous.json', {signal: AbortSignal.timeout(5000)}).catch(() => null) : null;
+  if (executiveInputs !== inputs) return;
+  const model = executiveDashboard.buildModel({
+    ...inputs, previous, stories: executiveDashboard.newsFromRetailWatch(),
+    evidenceFor: priorityEvidence, safeUrl: safeHttpUrl
+  });
+  executiveDashboard.render(model, relevanceLabels, confidenceLabels);
+}
+
 async function fetchThreatTelemetry(isManual = false) {
   if (syncInProgress) return;
   syncInProgress = true;
@@ -953,6 +971,7 @@ async function fetchThreatTelemetry(isManual = false) {
     if (items !== null && (!Array.isArray(items) || !items.every(isThreatRecord))) {
       throw new Error('Invalid threat data.');
     }
+    executiveInputs = {items, metadata};
     if (items !== null) {
       activeThreats = items;
       hasCollection = true;
@@ -994,6 +1013,7 @@ async function fetchThreatTelemetry(isManual = false) {
     }
   } catch {
     triageCoverage = null;
+    executiveInputs = {items: null, metadata: executiveInputs?.metadata};
     const briefingStatus = document.getElementById('briefingLastRun');
     if (briefingStatus) briefingStatus.textContent = 'Briefing status could not be loaded';
     setCollectionStatus('LOAD FAILED', hasCollection
@@ -1001,6 +1021,7 @@ async function fetchThreatTelemetry(isManual = false) {
       : 'The dataset could not be loaded.');
     showFlashAlert(null);
   } finally {
+    refreshExecutiveView();
     updateMetricsCounters();
     applyFilters();
     renderMitreMatrix();
@@ -1091,6 +1112,7 @@ function showDashboardView() {
     if (link.dataset.dashboardLink === view) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   });
+  if (view === 'executive') refreshExecutiveView();
   // The target may have been hidden when the browser tried to scroll to it.
   if (target) requestAnimationFrame(() => target.scrollIntoView({block: 'start'}));
 }

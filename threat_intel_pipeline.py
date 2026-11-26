@@ -27,7 +27,7 @@ from classification import (
 from delivery import deliver_outbox, queue_outbox
 from feed_transport import FeedError, download_json, download_source
 from operations import (
-    LOOKBACK_DAYS, assign_identity, atomic_write, canonical_article_url, collection_lock, deduplicate,
+    EXECUTIVE_PREVIOUS_FILE, LOOKBACK_DAYS, assign_identity, atomic_write, canonical_article_url, collection_lock, deduplicate,
     daily_slot_end, due_briefing, merge_outage_records, notification_slot, record_health, record_id,
 )
 from public_urls import validated_http_url
@@ -96,12 +96,12 @@ PEAK_TRADING_PATTERN = re.compile(
 def load_previous_records():
     try:
         records = json.loads(Path("data/threats.json").read_text(encoding="utf-8"))
-        return records if isinstance(records, list) else []
+        return records if isinstance(records, list) and all(isinstance(record, dict) for record in records) else None
     except FileNotFoundError:
-        return []
+        return None
     except (OSError, ValueError):
         logging.warning("Previous intelligence data could not be loaded.")
-        return []
+        return None
 
 
 def migrate_record_identity(records, fallback_seen):
@@ -513,6 +513,21 @@ def write_json(path, value):
     atomic_write(path, json.dumps(value, indent=2, ensure_ascii=False) + "\n")
 
 
+def save_executive_comparison(previous, previous_status, current_status, previous_available):
+    path = Path("data") / EXECUTIVE_PREVIOUS_FILE
+    earlier = utc_time(previous_status.get("data_updated_at"))
+    current = utc_time(current_status.get("data_updated_at"))
+    if (not previous_available or previous_status.get("state") != "current"
+            or current_status.get("state") != "current" or not earlier or not current or earlier >= current):
+        path.unlink(missing_ok=True)
+        return
+    write_json(path, {
+        "previous_at": previous_status["data_updated_at"],
+        "current_at": current_status["data_updated_at"],
+        "record_ids": sorted({record["id"] for record in previous}),
+    })
+
+
 def save_collection(articles, collection_state, status, feeds=()):
     os.makedirs("data", exist_ok=True)
     now = datetime.now(timezone.utc)
@@ -661,8 +676,11 @@ def run_collection():
     status = load_intelligence_status()
     discard_legacy_briefings(status, Path("data"))
     now = datetime.now(timezone.utc)
-    previous = migrate_record_identity(load_previous_records(), previous_build_time(status) or now)
-    previous_feeds = status.get("collection", {}).get("feeds", [])
+    previous_records = load_previous_records()
+    previous = migrate_record_identity(previous_records or [], previous_build_time(status) or now)
+    previous_available = previous_records is not None and len(previous) == len(previous_records)
+    previous_status = status.get("collection", {})
+    previous_feeds = previous_status.get("feeds", [])
     Path("data/daily_summary_date.txt").unlink(missing_ok=True)
     items, collection_state, feeds = fetch_and_filter_intel(previous, previous_feeds)
     Path("data").mkdir(exist_ok=True)
@@ -687,6 +705,7 @@ def run_collection():
             logging.error("Private notification queue is unavailable. Collection will continue.")
 
     save_collection(items, collection_state, status, feeds)
+    save_executive_comparison(previous, previous_status, status["collection"], previous_available)
     write_json(INTELLIGENCE_STATUS, status)
     if outbox:
         try:
