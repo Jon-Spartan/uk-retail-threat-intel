@@ -4,11 +4,14 @@ const path = require('node:path');
 const {after, before, test} = require('node:test');
 const {chromium} = require('playwright');
 const {buildModel} = require('../assets/executive.js');
+const {aggregate, search, executiveStories} = require('../assets/retail.js');
+const retailRegister = require('../assets/retail-intelligence.json');
 
 const site = path.resolve(process.env.DASHBOARD_TEST_SITE || 'public-site');
 const origin = 'https://pages.example.invalid';
 const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
+  'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico']);
 const privateKeyword = 'private-keyword-fixture';
 const sourceUrl = 'https://news.example.invalid/checkout';
@@ -71,7 +74,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
       return route.abort();
     }
     const file = url.pathname.slice(base.length) || 'index.html';
-    if (file.startsWith('data/') && Object.hasOwn(responses, file)) {
+    if (Object.hasOwn(responses, file)) {
       const value = responses[file];
       if (typeof value === 'number') return route.fulfill({status: value});
       if (typeof value === 'string') return route.fulfill({body: value, contentType: 'text/plain'});
@@ -223,6 +226,42 @@ test('executive view opens on mobile, compares published snapshots and withholds
   assert.equal(await page.locator('#executiveKev li').count(), 0);
   await page.getByRole('link', {name: 'CISA KEV', exact: true}).click();
   await page.locator('#searchInput').waitFor();
+  board.assertQuiet();
+});
+
+test('retail windows count distinct report IDs and Executive uses the same 30-day total', () => {
+  const now = Date.parse('2026-11-27T10:00:00Z');
+  const register = retailRegister;
+  const metrics = aggregate(register, 30, now);
+  assert.equal(metrics.incidents.length, 3);
+  assert.equal(metrics.reports.reduce((sum, [, count]) => sum + count, 0), 3);
+  assert.equal(metrics.supplyReports.length, 1);
+  assert.equal(search(metrics.records, {view: 'payments', sort: 'updated'})[0].id, 'retail-0003');
+  assert.equal(aggregate(register, 7, now).incidents.length, 1);
+  const executive = buildModel({now, stories: executiveStories(register), retailReviewedOn: register.reviewed_on,
+    evidenceFor: () => null, safeUrl: url => url});
+  assert.equal(executive.metrics[2][1], String(metrics.incidents.length));
+  assert.equal(aggregate(register, 30, now + 16 * 86400000).stale, true);
+});
+
+test('Retail Centre searches locally, preserves unknowns and safely links reviewed evidence on mobile', async t => {
+  const board = await dashboard(t, {'data/threats.json': [], 'data/intelligence_status.json': 404}, {hash: '#retail'});
+  const {page, requests} = board;
+  await page.clock.setFixedTime(new Date('2026-11-27T10:00:00Z'));
+  await page.setViewportSize({width: 390, height: 844});
+  await page.getByText('3 distinct incident records', {exact: false}).waitFor();
+  assert.equal(await page.locator('#retailMetrics dd').count(), 12);
+  assert.equal(await page.locator('#retailPeriod option[value="90"]').isDisabled(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  const before = requests.filter(request => request.url.includes('retail-intelligence.json')).length;
+  await page.getByRole('button', {name: 'Supply chain', exact: true}).click();
+  await page.locator('#retailResults summary').click();
+  assert.match(await page.locator('#retailResults').innerText(), /Initial access\s+Unknown/);
+  assert.equal(await page.locator('#retailResults').getByRole('link', {name: 'The Register'}).count(), 1);
+  await page.getByLabel('Search records').fill('nonmatching search');
+  await page.getByText('No reviewed records match these filters.').waitFor();
+  assert.equal(requests.filter(request => request.url.includes('retail-intelligence.json')).length, before);
+  assert.equal(requests.some(request => request.url.includes('nonmatching')), false);
   board.assertQuiet();
 });
 
@@ -456,7 +495,7 @@ test('editorial sections keep dated source links and stay separate from KEV filt
   const cyber = page.getByRole('region', {name: 'Cyber watch'});
   const nav = page.getByRole('navigation', {name: 'Dashboard views'});
   const primaryLinks = await nav.getByRole('link').all();
-  assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Executive', 'CISA KEV', 'Stories']);
+  assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Executive', 'CISA KEV', 'Retail', 'Stories']);
   const primaryBounds = await Promise.all(primaryLinks.map(link => link.boundingBox()));
   assert.ok(primaryBounds.every(box => box && box.height >= 44 && box.y === primaryBounds[0].y));
   const technicalNav = page.getByRole('navigation', {name: 'Technical views'});
@@ -468,6 +507,7 @@ test('editorial sections keep dated source links and stay separate from KEV filt
   await page.locator('#searchInput').fill('Checkout');
   await nav.getByRole('link', {name: 'Stories', exact: true}).click();
   await retail.waitFor();
+  await retail.getByRole('article').first().waitFor();
   assert.equal(await filter.isVisible(), false);
   assert.equal(await page.locator('#threatFeedContainer').isVisible(), false);
   assert.equal(await nav.getByRole('link', {name: 'Stories', exact: true}).getAttribute('aria-current'), 'page');

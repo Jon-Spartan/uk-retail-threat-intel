@@ -19,20 +19,6 @@ const executiveDashboard = (() => {
   const recordIdPattern = /^(?:cisa-kev-cve_[0-9]{4}_[0-9]{4,15}|src-[0-9a-f]{64})$/;
   const validId = id => typeof id === 'string' && recordIdPattern.test(id);
 
-  function newsFromRetailWatch() {
-    return Array.from(document.querySelectorAll('#retail-watch [data-retail-development]'), card => {
-      const source = card.querySelector('a[href]');
-      return {
-        kind: card.dataset.retailDevelopment, relevance: card.dataset.retailRelevance,
-        title: card.querySelector('h4')?.textContent.trim(),
-        date: card.querySelector('time[datetime]')?.dateTime,
-        summary: card.querySelector('[data-retail-summary]')?.textContent.trim(),
-        action: card.querySelector('[data-retail-action]')?.textContent.trim(),
-        source: source?.textContent.trim(), url: source?.getAttribute('href')
-      };
-    });
-  }
-
   function compareSnapshots(items, previous, collection, coverage) {
     if (coverage !== 'current') return 'Comparison unavailable until a complete, current collection can be verified.';
     if (previous?.current_at !== collection.data_updated_at ||
@@ -52,7 +38,8 @@ const executiveDashboard = (() => {
       : 'No records were added to or removed from the collection window since ' + since + '.';
   }
 
-  function buildModel({items, metadata, previous, stories, now = Date.now(), evidenceFor, safeUrl}) {
+  function buildModel({items, metadata, previous, stories, retailReviewedOn, now = Date.now(), evidenceFor, safeUrl}) {
+    const retail = typeof module !== 'undefined' ? require('./retail.js') : retailCentre;
     const collection = metadata?.collection || {};
     const updated = Date.parse(collection.data_updated_at);
     const age = now - updated;
@@ -129,21 +116,23 @@ const executiveDashboard = (() => {
     const newRelatedKev = relatedKev.filter(record => within(record.added, updated, 7 * day));
     const hasRecentPriority = topThreats.some(record => record.score >= 50);
 
-    const today = Math.floor(now / day) * day;
+    const today = retail.todayFor(now);
+    const retailStale = retailReviewedOn != null && !retail.windowContains(Date.parse(retailReviewedOn), today, 15);
     const reviewed = [...new Map(stories.flatMap(story => {
       const url = linked(story.url);
       const date = Date.parse(story.date);
       if (!url || !story.title || !story.summary || !story.source || !story.relevance ||
           !['incident', 'development'].includes(story.kind) || !/^\d{4}-\d{2}-\d{2}$/.test(story.date) ||
           !Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== story.date) return [];
-      return [[url, {...story, url, date}]];
+      return [[story.id || url, {...story, url, date}]];
     })).values()].sort((a, b) => b.date - a.date);
-    const incidents = reviewed.filter(story => within(story.date, today, 30 * day));
+    const incidents = reviewed.filter(story => retail.windowContains(story.date, today, 30));
     const incidentCount = incidents.filter(story => story.kind === 'incident').length;
 
     const actions = [];
     const usedActions = new Set();
-    for (const item of [...recentPriority, ...incidents.filter(story => within(story.date, today, 7 * day))]) {
+    const timelyRetail = retailStale ? [] : incidents.filter(story => retail.windowContains(story.date, today, 7));
+    for (const item of [...recentPriority, ...timelyRetail]) {
       if (!item.action || usedActions.has(item.action)) continue;
       usedActions.add(item.action);
       actions.push({text: item.action, url: item.url, source: item.source});
@@ -173,7 +162,7 @@ const executiveDashboard = (() => {
     } else {
       observations.push({text: 'Current vulnerability observations are unavailable.'});
     }
-    if (incidents.length) {
+    if (incidents.length && !retailStale) {
       const topics = [...new Set(incidents.map(story => story.relevance.toLowerCase()))];
       observations.push({text: 'Recent Retail Watch coverage includes ' + new Intl.ListFormat('en-GB').format(topics) + '.',
         source: 'Retail Watch', url: '#retail-watch'});
@@ -215,7 +204,8 @@ const executiveDashboard = (() => {
     const metrics = [
       ['New priority threats', total(recentPriority.length), 'Retail-relevant, first seen in 7 days', 'priority'],
       ['New KEVs relevant to retail', total(newRelatedKev.length), 'CISA additions in 7 days', 'kev'],
-      ['Reported retail incidents', reviewed.length ? String(incidentCount) : 'Unavailable', 'Reviewed public incidents in 30 days', 'incidents'],
+      ['Reported retail incidents', retailStale ? 'Stale' : (retailReviewedOn || reviewed.length) ? String(incidentCount) : 'Unavailable',
+        'Reviewed public incidents in 30 days', 'incidents'],
       ['Confirmed active exploitation', total(kev.length), 'Unique CVEs in the collection', 'exploitation'],
       ['Recommended actions', actions.length ? String(actions.length) : 'Unavailable', 'Evidence-linked reviews for this week', 'actions'],
       ['Feed health', healthStatus, 'Vulnerability collection', 'coverage']
@@ -229,7 +219,8 @@ const executiveDashboard = (() => {
         'First seen in 14 days, ranked by retail relevance and priority.' : 'No records first seen in this snapshot window.',
       kevNote: !fresh ? 'Current KEV coverage is unavailable.' : relatedKev.length ? 'Confirmed exploitation with documented retail relevance.' :
         kev.length ? 'Wider catalogue watch. Retail relevance is unestablished for these entries.' : 'No verified KEVs in this snapshot.',
-      incidentNote: incidents.length ? 'Selected public incidents and developments from the past 30 days.'
+      incidentNote: retailStale ? 'The editorial review is stale. Dated records are from the reviewed archive.' :
+        incidents.length ? 'Selected public incidents and developments from the past 30 days.'
         : 'No recent reviewed entries are available from Retail Watch.'};
   }
 
@@ -382,7 +373,7 @@ const executiveDashboard = (() => {
     categoriesPanel.replaceChildren(...(suffix ? [el('p', suffix.slice(3), label), bars] : [bars]));
   }
 
-  return {buildModel, newsFromRetailWatch, render};
+  return {buildModel, render};
 })();
 
 if (typeof module !== 'undefined') module.exports = executiveDashboard;

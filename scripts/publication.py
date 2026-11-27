@@ -22,6 +22,7 @@ from briefings import (
 from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid, product_entry
 from official_updates import FILENAME as OFFICIAL_UPDATES_FILE, validate_updates
 from press_updates import FILENAME as PRESS_UPDATES_FILE, validate_press
+from retail_intelligence import REGISTER, validate_register
 
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
@@ -39,6 +40,8 @@ ASSETS = (
     "SOURCES.md",
     "assets/dashboard.js",
     "assets/executive.js",
+    "assets/retail.js",
+    REGISTER,
     "assets/theme.js",
     "assets/dashboard.css",
     "assets/inter.woff2",
@@ -415,6 +418,7 @@ def stage_site(source, destination, root):
     files = validate_release_data(source)
     require(not destination.exists() and not destination.is_symlink(), "Use a fresh site staging directory.")
     assets = {name: check_file(root / name) for name in ASSETS}
+    validate_register(read_json(assets[REGISTER]))
     (destination / "assets").mkdir(parents=True)
     copy_files(assets, destination)
     copy_files(files, destination / "data")

@@ -1,5 +1,9 @@
 # UK Retail Threat Intelligence Board security remediation
 
+## Retail Intelligence Centre
+
+The static publication manifest includes the reviewed retail register and its locally served browser module. Site staging validates record shape, IDs, bounded text, provenance, dates and allowed source paths. The register is versioned with the site, so restoring vulnerability artifacts cannot replace it. The browser renders source summaries and search terms as text and uses same-origin retrieval. Editorial facts and defensive lessons have linked evidence. The existing constrained briefing validator remains the AI publication boundary.
+
 ## Clean release
 
 This release begins with an independent root commit and an empty checked-in snapshot. Scheduled collection uses CISA KEV and its existing public enrichment sources. Reviewed NCSC and ICO references are available on the site. The Phase 7 worktree remains a local archive and contains the original news snapshot.

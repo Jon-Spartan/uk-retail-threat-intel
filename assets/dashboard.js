@@ -933,11 +933,15 @@ async function refreshExecutiveView() {
   const inputs = executiveInputs;
   if (!inputs || !panel || panel.classList.contains('hidden') || executiveRequest === inputs) return;
   executiveRequest = inputs;
-  const previous = inputs.items && inputs.metadata?.collection?.state === 'current'
-    ? await fetchJson('executive_previous.json', {signal: AbortSignal.timeout(5000)}).catch(() => null) : null;
+  const [previous, register] = await Promise.all([
+    inputs.items && inputs.metadata?.collection?.state === 'current'
+      ? fetchJson('executive_previous.json', {signal: AbortSignal.timeout(5000)}).catch(() => null) : null,
+    retailCentre.load()
+  ]);
   if (executiveInputs !== inputs) return;
   const model = executiveDashboard.buildModel({
-    ...inputs, previous, stories: executiveDashboard.newsFromRetailWatch(),
+    ...inputs, previous, stories: retailCentre.executiveStories(register),
+    retailReviewedOn: register?.reviewed_on ?? null,
     evidenceFor: priorityEvidence, safeUrl: safeHttpUrl
   });
   executiveDashboard.render(model, relevanceLabels, confidenceLabels);
@@ -1117,6 +1121,8 @@ function showDashboardView() {
     else link.removeAttribute('aria-current');
   });
   if (view === 'executive') refreshExecutiveView();
+  if (view === 'retail') retailCentre.open(safeHttpUrl);
+  if (view === 'stories') retailCentre.renderWatch(safeHttpUrl);
   // The target may have been hidden when the browser tried to scroll to it.
   if (target) requestAnimationFrame(() => target.scrollIntoView({block: 'start'}));
 }

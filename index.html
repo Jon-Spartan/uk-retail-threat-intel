@@ -6,9 +6,10 @@
   <title>UK Retail Cyber Threat Intelligence (CTI) Hub</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
   <script src="./assets/theme.js"></script>
-  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112703">
-  <script src="./assets/executive.js?t=2026112703" defer></script>
-  <script src="./assets/dashboard.js?t=2026112701" defer></script>
+  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112704">
+  <script src="./assets/executive.js?t=2026112704" defer></script>
+  <script src="./assets/retail.js?t=2026112704" defer></script>
+  <script src="./assets/dashboard.js?t=2026112704" defer></script>
 </head>
 <body class="min-h-screen flex flex-col antialiased bg-slate-50 text-slate-800 dark:bg-[#07090e] dark:text-slate-100 selection:bg-sky-500 selection:text-white">
 
@@ -39,9 +40,10 @@
       </div>
 
       <div class="grid w-full grid-cols-[1fr_auto] items-center gap-2 sm:flex sm:flex-wrap lg:w-auto lg:gap-3">
-        <nav aria-label="Dashboard views" class="col-span-2 grid grid-cols-3 gap-2 sm:flex">
+        <nav aria-label="Dashboard views" class="col-span-2 grid grid-cols-2 gap-2 min-[380px]:grid-cols-4 sm:flex">
           <a data-dashboard-link="executive" href="#executive" class="dashboard-view-link dashboard-view-link-primary">Executive</a>
           <a id="tabFeedBtn" data-dashboard-link="kev" aria-current="page" href="#kev" class="dashboard-view-link dashboard-view-link-primary">CISA KEV</a>
+          <a data-dashboard-link="retail" href="#retail" class="dashboard-view-link dashboard-view-link-primary">Retail</a>
           <a id="tabStoriesBtn" data-dashboard-link="stories" href="#stories" class="dashboard-view-link dashboard-view-link-primary">Stories</a>
         </nav>
         <nav aria-label="Technical views" class="flex items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-2 dark:sm:border-slate-800 lg:pl-3">
@@ -133,7 +135,7 @@
           <h3 id="executiveIncidentsTitle">Retail Sector Incident Watch</h3>
           <p id="executiveIncidentsNote" class="executive-meta"></p>
           <ul id="executiveIncidents" class="executive-list"></ul>
-          <a class="executive-link" href="#retail-watch">Open Retail Watch</a>
+          <a class="executive-link" href="#retail">Open Retail Intelligence Centre</a>
         </section>
         <section class="executive-panel" aria-labelledby="executiveActionsTitle">
           <h3 id="executiveActionsTitle">Recommended Actions</h3>
@@ -152,6 +154,85 @@
         <dl id="executiveHealth" class="executive-health"></dl>
         <a href="./SCORING.md" class="executive-link">Read the scoring method</a>
       </section>
+    </section>
+
+    <section data-dashboard-view="retail" aria-labelledby="retail" class="hidden executive-dashboard retail-centre">
+      <div class="executive-heading">
+        <div><h2 id="retail" class="dashboard-anchor">Retail Intelligence Centre</h2><p>UK retail sector intelligence and incident evidence</p></div>
+        <dl class="executive-status"><div><dt>Editorial freshness</dt><dd id="retailFreshness">Checking</dd></div></dl>
+      </div>
+      <p id="retailCoverage" class="executive-notice" role="status">Loading the reviewed retail register.</p>
+      <label class="retail-period">Reporting period
+        <select id="retailPeriod"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">365 days</option></select>
+      </label>
+      <dl id="retailMetrics" class="executive-kpis" aria-label="Retail indicators"></dl>
+      <div id="retailViews" class="retail-views" role="group" aria-label="Retail intelligence views">
+        <button type="button" data-retail-view="" aria-pressed="true">Overview</button>
+        <button type="button" data-retail-view="incidents" aria-pressed="false">Incidents</button>
+        <button type="button" data-retail-view="campaigns" aria-pressed="false">Threat campaigns</button>
+        <button type="button" data-retail-view="supply" aria-pressed="false">Supply chain</button>
+        <button type="button" data-retail-view="payments" aria-pressed="false">Payments</button>
+      </div>
+      <section class="executive-panel executive-insights" aria-labelledby="retailBriefTitle">
+        <h3 id="retailBriefTitle">Sector intelligence briefing</h3>
+        <p id="retailBrief" role="status">Waiting for reviewed evidence.</p>
+        <div id="retailBriefSources" class="retail-sources"></div>
+      </section>
+      <div class="retail-charts">
+        <section class="executive-panel" aria-labelledby="retailTrendTitle">
+          <h3 id="retailTrendTitle">Retail incident trends</h3>
+          <p class="executive-meta">Unique incidents by date of first reporting in the register. Only dates with records are charted.</p>
+          <div id="retailTrend"></div>
+          <details class="retail-chart-details">
+            <summary>Supply chain and payment trends</summary>
+            <h4>Supply chain incidents</h4><div id="retailSupplyTrend"></div>
+            <h4>Payment developments</h4><div id="retailPaymentTrend"></div>
+          </details>
+        </section>
+        <section class="executive-panel" aria-labelledby="retailFunctionsTitle">
+          <h3 id="retailFunctionsTitle">Affected retail functions</h3>
+          <p id="retailChartStatus" class="executive-meta"></p>
+          <div id="retailFunctions"></div>
+          <details class="retail-chart-details">
+            <summary>Threat categories and geography</summary>
+            <h4>Observed threat categories</h4><div id="retailCategories"></div>
+            <h4>Geography</h4><div id="retailGeography"></div>
+          </details>
+        </section>
+      </div>
+      <section class="executive-panel" aria-labelledby="retailArchiveTitle">
+        <h3 id="retailArchiveTitle">Latest retail intelligence</h3>
+        <form id="retailFilters" class="retail-filters">
+          <label>Search records <input name="search" type="search" placeholder="Search title, organisation or evidence"></label>
+          <label>Sort by <select name="sort"><option value="reported">Initial report</option><option value="updated">Latest evidence date</option></select></label>
+          <details><summary>More filters</summary><div class="retail-facets">
+            <label>Category <select name="category"><option value="">All</option></select></label>
+            <label>Business function <select name="function"><option value="">All</option></select></label>
+            <label>Geography <select name="geography"><option value="">All</option></select></label>
+            <label>Organisation <select name="organisation"><option value="">All</option></select></label>
+            <label>Status <select name="status"><option value="">All</option></select></label>
+            <label>Intelligence type <select name="kind"><option value="">All</option></select></label>
+            <label>Retail relevance <select name="relevance"><option value="">All</option></select></label>
+            <label>Confidence <select name="confidence"><option value="">All</option></select></label>
+            <label>Source <select name="source"><option value="">All</option></select></label>
+          </div></details>
+        </form>
+        <p id="retailResultsCount" class="executive-meta" role="status"></p>
+        <div id="retailResults"></div>
+      </section>
+      <div class="retail-bottom">
+        <section class="executive-panel" aria-labelledby="retailLessonsTitle">
+          <h3 id="retailLessonsTitle">Lessons for retailers</h3>
+          <p class="executive-meta">Editorial recommendations with linked evidence</p>
+          <ul id="retailLessons" class="executive-list"></ul>
+        </section>
+        <section id="retailSeason" class="executive-panel" aria-labelledby="retailSeasonTitle">
+          <h3 id="retailSeasonTitle">Golden Quarter Watch</h3>
+          <p>Black Friday, Cyber Monday and Christmas trading through January sales and returns.</p>
+          <p class="executive-meta">Monitor seasonal phishing, impersonation, delivery scams, payment fraud and trading disruption.</p>
+          <div id="retailSeasonal" class="retail-sources"></div>
+        </section>
+      </div>
     </section>
 
     <section id="tabFeedContent" data-dashboard-view="kev" aria-labelledby="kev" class="space-y-6">
@@ -386,39 +467,10 @@
       </section>
 
       <section id="retail-watch" aria-labelledby="retailWatchTitle" class="dashboard-anchor space-y-3">
-        <div>
-          <h3 id="retailWatchTitle" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Retail watch</h3>
-          <p class="text-sm text-slate-600 dark:text-slate-400">Editorial notes on security stories that matter to UK retail.</p>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <article data-retail-development="development" data-retail-relevance="Online shopping" class="flex flex-col gap-3 rounded-xl border border-slate-700 bg-gradient-to-br from-slate-900 to-sky-950 p-5 text-white shadow-sm sm:col-span-2 lg:col-span-1">
-            <p class="text-xs font-medium text-sky-200">Shopping scams · <time datetime="2026-11-24">24 November 2026</time></p>
-            <h4 class="text-lg font-semibold leading-tight">Give shoppers a way back to the real store</h4>
-            <p data-retail-summary class="text-sm leading-relaxed text-slate-200">The NCSC reviewed its online shopping guidance just before Black Friday. It advises shoppers to find a retailer’s official site themselves and use passkeys or two-step verification where available.</p>
-            <p class="text-sm leading-relaxed text-slate-200"><strong>For retailers</strong> <span data-retail-action>Make order tracking and scam reporting easy to find on your own site.</span></p>
-            <a href="https://www.ncsc.gov.uk/guidance/shopping-online-securely" class="mt-auto text-sm font-medium text-sky-200 underline underline-offset-4">NCSC shopping guidance</a>
-          </article>
-
-          <article data-retail-development="incident" data-retail-relevance="Retail supplier" class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-            <p class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Supplier incidents · <time datetime="2026-11-23">23 November 2026</time></p>
-            <h4 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">When a supplier reports a breach</h4>
-            <p data-retail-summary class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">The Register reported a breach at an online supplier to Next. The retailer said it had found no evidence that customer personal data was affected at the time of its statement. Its investigation was still open.</p>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> <span data-retail-action>Agree who confirms the impact and who answers customers when a supplier reports an incident.</span></p>
-            <a href="https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">The Register’s reporting</a>
-          </article>
-
-          <article data-retail-development="incident" data-retail-relevance="Payment services" class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-            <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Payment data · <time datetime="2026-11-20">20 November 2026</time></p>
-            <h4 class="text-lg font-semibold leading-tight text-slate-900 dark:text-white">Payment data after checkout</h4>
-            <p data-retail-summary class="text-sm leading-relaxed text-slate-600 dark:text-slate-300">Cleverbridge began notifying affected customers after finding that data had been copied from its platform. The provider says some of the copied data included payment card details.</p>
-            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"><strong>For retailers</strong> <span data-retail-action>Ask payment providers which card data they retain and how they notify affected customers.</span></p>
-            <p class="border-l-2 border-emerald-400 pl-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              <strong>Disclosure checked · <time datetime="2026-11-25">25 November</time></strong> The provider’s FAQ says card security codes were involved in a minority of cases. Affected customers should check their own notification for details.
-            </p>
-            <a href="https://grow.cleverbridge.com/incident-update" class="mt-auto text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Cleverbridge incident update</a>
-          </article>
-        </div>
+        <h3 id="retailWatchTitle" class="text-xl font-bold tracking-tight">Retail watch</h3>
+        <p class="text-sm text-slate-600 dark:text-slate-400">Highlights from the reviewed retail register.</p>
+        <div id="retailWatchCards" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite"></div>
+        <a href="#retail" class="text-sm font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300">Open Retail Intelligence Centre</a>
       </section>
 
       <section id="cyber-watch" aria-labelledby="cyberWatchTitle" class="dashboard-anchor space-y-3">

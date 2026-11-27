@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "reviewed_on": "2026-11-27",
+  "records": [
+    {
+      "id": "retail-0001", "kind": "advisory", "title": "Help shoppers find the genuine online store",
+      "organisation": "National Cyber Security Centre", "organisation_type": "Public authority", "geography": "United Kingdom",
+      "status": "guidance", "relevance": "uk_direct", "confidence": "first_party", "supplier_type": null,
+      "categories": ["ecommerce_fraud", "phishing"], "functions": ["ecommerce"], "seasonal": true,
+      "initial_access": null, "impact": null, "exposure": null,
+      "lesson": "Make legitimate order tracking and scam reporting easy to find from the retailer’s official website.",
+      "timeline": [
+        {"date": "2026-11-24", "kind": "report", "publisher": "NCSC", "url": "https://www.ncsc.gov.uk/guidance/shopping-online-securely", "summary": "UK guidance explains how to recognise fraudulent shops and use official routes to reach retailers."}
+      ]
+    },
+    {
+      "id": "retail-0002", "kind": "incident", "title": "Next responds to a reported supplier incident",
+      "organisation": "Next", "organisation_type": "Retailer cited in supplier incident", "geography": "United Kingdom",
+      "status": "investigating", "relevance": "uk_direct", "confidence": "attributed", "supplier_type": null,
+      "categories": ["supply_chain"], "functions": ["supply_chain"], "seasonal": false,
+      "initial_access": null, "impact": null, "exposure": "The retailer said it had found no evidence that customer personal data was affected at the time of its statement. The wider scope was still being investigated.",
+      "lesson": "Agree who verifies impact and who communicates with customers when an incident is reported by a supplier.",
+      "timeline": [
+        {"date": "2026-11-23", "kind": "report", "publisher": "The Register", "url": "https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684", "summary": "The Register reported a breach at an online supplier to Next and quoted the retailer’s assessment. The public report did not establish an incident in Next’s own systems."}
+      ]
+    },
+    {
+      "id": "retail-0003", "kind": "incident", "title": "Cleverbridge discloses copying of data from its platform",
+      "organisation": "Cleverbridge", "organisation_type": "E-commerce and payments provider", "geography": null,
+      "status": "investigating", "relevance": "sector", "confidence": "first_party", "supplier_type": "payment",
+      "categories": ["data_breach", "payment_card"], "functions": ["payments", "customer_data"], "seasonal": false,
+      "initial_access": null, "impact": "Cleverbridge reported temporarily taking affected systems offline and restoring them on 4 November.",
+      "exposure": "Cleverbridge confirmed copying of some personal data, including some payment card information.",
+      "lesson": "Ask payment providers which card data they retain and how they notify affected customers.",
+      "timeline": [
+        {"date": "2026-11-20", "kind": "report", "publisher": "Cleverbridge", "url": "https://grow.cleverbridge.com/incident-update", "summary": "The company dates the start of customer notifications to 20 November and reports that data was copied from its platform."},
+        {"date": "2026-11-25", "kind": "evidence_review", "publisher": "Cleverbridge", "url": "https://grow.cleverbridge.com/incident-update", "summary": "A Retail Watch evidence review noted that the company FAQ identified card security codes among the data involved in some cases."}
+      ]
+    },
+    {
+      "id": "retail-0004", "kind": "incident", "title": "McDonald’s Japan discloses unauthorised access to app data",
+      "organisation": "McDonald’s Japan", "organisation_type": "Food service retailer", "geography": "Japan",
+      "status": "investigating", "relevance": "sector", "confidence": "first_party", "supplier_type": null,
+      "categories": ["data_breach"], "functions": ["ecommerce", "customer_data"], "seasonal": false,
+      "initial_access": null, "impact": null,
+      "exposure": "The company confirmed access to some customer-related app data, including purchase histories. Copying was not established in the notice.",
+      "lesson": "Review how retail apps separate customer information and restrict access to purchase history.",
+      "timeline": [
+        {"date": "2026-11-20", "kind": "report", "publisher": "McDonald’s Japan", "url": "https://www.mcdonalds.co.jp/company/info/261120a/", "summary": "The company confirmed that a third party accessed some customer-related information in its official app database. This is international sector intelligence."}
+      ]
+    }
+  ]
+}

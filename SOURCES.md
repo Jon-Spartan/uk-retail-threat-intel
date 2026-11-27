@@ -35,7 +35,7 @@ The dashboard’s Retail watch section contains dated, project-authored notes. T
 - **The Register** reporting on a supplier incident affecting Next, published 23 November 2026. The note attributes the reported findings to the retailer and preserves the uncertainty of its statement. [Original reporting](https://www.theregister.com/cyber-crime/2026/11/23/british-retailer-next-downplays-data-breach-at-tech-supplier/5311684) · [Publisher linking policy](https://www.theregister.com/Profile/linking/)
 - **Cleverbridge** incident update confirming the start of customer notifications on 20 November 2026. [Company disclosure](https://grow.cleverbridge.com/incident-update)
 
-To update a note, edit the Retail watch section in [the dashboard HTML](index.html). Verify claims against original evidence, write the headline and summary in your own words, and use a dated, attributed HTTPS link. The date should identify the source update or the event described in the card. Review the note when new facts change its substance.
+The Retail Centre, Retail Watch and Executive read the same [editorial register](assets/retail-intelligence.json). It also includes [McDonald’s Japan’s first-party app incident notice](https://www.mcdonalds.co.jp/company/info/261120a/) as international sector intelligence. Update the review date after checking the register, keep the event ID when adding a disclosure or correction, and record unknown facts as null. Add evidence in project-authored wording with dated, attributed HTTPS links. Only use supplier relationships supported by the cited evidence. The register is manually reviewed and does not automatically collect additional sources.
 
 ## Cyber watch
 
