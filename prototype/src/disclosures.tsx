@@ -19,17 +19,17 @@ const reviewed: Disclosure[] = [
   ]}
 ]
 
-export function DisclosureWatch({sector}: {sector?: Sector}) {
+export function DisclosureWatch({sector, preview = false}: {sector?: Sector; preview?: boolean}) {
   const records = reviewed.filter(record => !sector || record.sectors.includes(sector))
-    .sort((a, b) => b.timeline.at(-1)!.date.localeCompare(a.timeline.at(-1)!.date))
+    .sort((a, b) => b.timeline.at(-1)!.date.localeCompare(a.timeline.at(-1)!.date)).slice(0, preview ? 3 : undefined)
   return <Panel title={sector ? 'Disclosure Watch' : 'Reviewed disclosures'} detail="Selected original notices and follow-ups, including historical incidents.">
     {records.length ? <ul className="review-queue-list">{records.map(record => <li key={record.id}>
       <div className="review-entry"><h3>{record.title}</h3>
-        <ul className="evidence-timeline">{record.timeline.map(entry => <li key={entry.date + entry.url}>
+        <ul className="evidence-timeline">{(preview ? record.timeline.slice(-1) : record.timeline).map(entry => <li key={entry.date + entry.url}>
           <strong>{showDate(entry.date)}</strong><p>{entry.summary}</p><External url={entry.url}>{entry.publisher}</External>
         </li>)}</ul>
       </div>
     </li>)}</ul> : <Empty title="No reviewed disclosures for this sector"/>}
-    {sector && <a className="text-link" href="#/disclosures">View all reviewed disclosures</a>}
+    {(sector || preview) && <a className="text-link" href="#/disclosures">View all reviewed disclosures</a>}
   </Panel>
 }

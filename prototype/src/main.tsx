@@ -9,10 +9,12 @@ import {cyberWatch, Roundup} from './editorial'
 import {ReviewQueueProvider, ReviewQueueView} from './reviewQueue'
 import {TopicWatch} from './topicWatch'
 import {DisclosureWatch} from './disclosures'
+import {Today} from './today'
 import {Icon, State} from './ui'
 import './style.css'
 
 const views = {
+  today: {title: 'Today’s Briefing', description: 'Catch up on priority vulnerabilities, recent reporting and reviewed disclosures.', icon: 'overview', group: 'Overview'},
   overview: {title: 'Executive Overview', description: 'Monitor the public UK retail cyber threat landscape.', icon: 'overview', group: 'Overview'},
   feed: {title: 'Intelligence Feed', description: 'Find security reporting and verify it against the original sources.', icon: 'feed', group: 'Explore'},
   disclosures: {title: 'Disclosure Watch', description: 'Read reviewed public notices and follow-up statements.', icon: 'feed', group: 'Explore'},
@@ -40,7 +42,7 @@ const aliases: Record<string, string> = {
 function route() {
   const fragment = location.hash.slice(1)
   const legacyStory = cyberWatch.find(story => story.id === fragment)
-  const normalized = !fragment ? '/overview' : legacyStory ? '/feed/' + legacyStory.id :
+  const normalized = !fragment ? '/today' : legacyStory ? '/feed/' + legacyStory.id :
     Object.hasOwn(aliases, fragment) ? aliases[fragment] : fragment
   const [raw, query] = normalized.split('?')
   const path = raw.match(/^\/([a-z]+)(?:\/([a-z0-9_-]{1,90}))?$/)
@@ -65,7 +67,7 @@ function Navigation({view, onNavigate}: {view: View; onNavigate?: () => void}) {
 }
 
 function Brand() {
-  return <a className="brand" href="#/overview"><span className="brand-mark"><Icon name="shield" size={20}/></span>
+  return <a className="brand" href="#/today"><span className="brand-mark"><Icon name="shield" size={20}/></span>
     <span><strong>Cyber Threat Intelligence</strong></span></a>
 }
 
@@ -180,6 +182,7 @@ function App() {
         <Flash snapshot={snapshot}/>
         {!current.valid && <div className="notice">This route is unavailable in the prototype. Choose a view in the navigation.</div>}
         <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
+        {current.view === 'today' && <Today snapshot={snapshot}/>}
         {current.view === 'retail' && <><Retail snapshot={snapshot} selected={current.id}/><DisclosureWatch sector="retail"/></>}
         {current.view === 'disclosures' && <DisclosureWatch/>}
         {(current.view === 'legal' || current.view === 'finance' || current.view === 'healthcare' || current.view === 'ai') &&

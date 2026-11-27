@@ -170,7 +170,7 @@ async function readBriefing(period: Period, status: BriefingStatus): Promise<Bri
   return {sections, sources, stale: status.state !== 'available' || Date.now() - Date.parse(status.generated_at || '') > maxAge}
 }
 
-export function Briefings({snapshot, period}: {snapshot: Snapshot | null; period: Period}) {
+export function Briefings({snapshot, period, compact = false}: {snapshot: Snapshot | null; period: Period; compact?: boolean}) {
   const status = snapshot?.briefings[period]
   const [result, setResult] = useState<{value: Briefing | null; key: string} | null>(null)
   const key = period + '|' + status?.generated_at + '|' + status?.validated_at + '|' + status?.state
@@ -188,15 +188,15 @@ export function Briefings({snapshot, period}: {snapshot: Snapshot | null; period
   const briefing = result?.key === key ? result.value : undefined
   return <Panel title={period === 'daily' ? 'Daily intelligence briefing' : 'Weekly intelligence briefing'}
     detail={briefing ? 'AI-assisted selection of public-source evidence' : undefined}>
-    <nav aria-label="Briefing editions" className="inline-links">
+    {compact ? <a href="#/briefings/daily">Read the full briefing</a> : <nav aria-label="Briefing editions" className="inline-links">
       <a href="#/briefings/daily" aria-current={period === 'daily' ? 'page' : undefined}>Daily</a>
       <a href="#/briefings/weekly" aria-current={period === 'weekly' ? 'page' : undefined}>Weekly</a>
       <a href="#/roundup">Editorial roundup</a>
-    </nav>
+    </nav>}
     {briefing ? <div className="briefing-body">
       <div className="notice"><State>{briefing.stale ? 'Stale' : 'Validated'}</State><span>Validated {showDate(validated, true)} UK time</span></div>
       {briefing.sections.filter(section => section.rows.length).map(section => <section key={section.title}>
-        <h3>{section.title}</h3><ul>{section.rows.map(row => <li key={row.id}>{row.text} <a href={'#' + period + '-source-' + row.id}
+        <h3>{section.title}</h3><ul>{(compact ? section.rows.slice(0, 2) : section.rows).map(row => <li key={row.id}>{row.text} <a href={'#' + period + '-source-' + row.id}
           onClick={event => {event.preventDefault(); document.getElementById(period + '-source-' + row.id)?.focus()}}>[{row.id}]</a></li>)}</ul>
       </section>)}
       <section><h3>Sources</h3><ul>{briefing.sources.map(source => <li key={source.id} id={period + '-source-' + source.id} tabIndex={-1}>

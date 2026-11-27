@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-DtPG66RZ.js', 'assets/index-Cv_9NMEn.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-C0tCoWAi.js', 'assets/index-Cv_9NMEn.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -512,7 +512,7 @@ test('Executive compares new records while open, marks them seen and shows real 
       {collected_at: '2026-11-27T12:00:00+00:00', severity: {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0}, kev: 0}
     ]},
     'site_status.json': {prepared_at: stamp, data_updated_at: '2026-11-20T11:30:00+00:00'}
-  }, {pathSuffix: '', legacy: false, clock: true});
+  }, {pathSuffix: '', hash: '#/overview', legacy: false, clock: true});
   const {page, responses} = board;
   await page.clock.setFixedTime(new Date(now));
   await page.getByText('What changed since your last visit?').waitFor();
@@ -537,6 +537,35 @@ test('Executive compares new records while open, marks them seen and shows real 
   await page.getByRole('link', {name: 'Intelligence Briefings'}).click();
   await page.getByText(/Source-linked briefing/).waitFor();
   await page.getByRole('link', {name: /10021/}).waitFor();
+  board.assertQuiet();
+});
+
+test('Today is the home page and groups repeat reporting around primary sources', async t => {
+  const officialUrl = 'https://www.ncsc.gov.uk/news/example';
+  const pressUrl = 'https://www.theregister.com/security/example';
+  const stamp = hoursAgo(1);
+  const kev = executiveKev('10001', stamp, {severity: 'HIGH'});
+  const board = await dashboard(t, {
+    'data/threats.json': [kev, {...kev, id: 'duplicate-kev'}],
+    'data/intelligence_status.json': {collection: collection('current')},
+    'data/official_updates.json': {checked_at: stamp, sources: {ncsc: 'current'}, stories: [
+      {id: 'daily-official', title: 'Official daily briefing fixture', source: 'ncsc', url: officialUrl, published_at: stamp}
+    ]},
+    'data/press_updates.json': {checked_at: stamp, research: 'current', stories: [
+      {id: 'daily-press', title: 'Related press reporting', source: 'register', url: pressUrl, evidence_url: officialUrl, date: hoursAgo(0.5)}
+    ]}
+  }, {pathSuffix: '', legacy: false});
+  const {page} = board;
+  await page.getByRole('heading', {name: 'Today’s Briefing', exact: true}).waitFor();
+  const grouped = page.getByRole('heading', {name: 'Official daily briefing fixture', exact: true});
+  await grouped.waitFor();
+  assert.equal(await grouped.locator('..').getByRole('link', {name: 'The Register'}).getAttribute('href'), pressUrl);
+  assert.equal(await page.getByRole('heading', {name: 'Related press reporting', exact: true}).count(), 0);
+  assert.equal(await page.getByRole('heading', {name: kev.title, exact: true}).count(), 1);
+  await page.getByRole('heading', {name: 'Daily intelligence briefing', exact: true}).waitFor();
+  await page.getByRole('heading', {name: 'Reviewed disclosures', exact: true}).waitFor();
+  await page.setViewportSize({width: 390, height: 844});
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   board.assertQuiet();
 });
 
