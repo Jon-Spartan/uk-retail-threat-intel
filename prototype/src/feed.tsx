@@ -41,6 +41,9 @@ function ReadingPane({story, reports, source}: {story: Story; reports: Story[]; 
       <h2 id="feed-reader-title">{story.title}</h2>
       <p className="feed-reader-byline"><span>{story.source}</span><span aria-hidden="true">·</span>
         <time dateTime={story.date}>{showDate(story.date)}</time></p>
+      {story.sourceKey === 'nhs_cyber' && <p className="muted">Information from NHS England, licenced under the current version of the Open Government Licence.</p>}
+      {(story.sourceKey === 'moj_cyber' || story.sourceKey === 'treasury_cyber') &&
+        <p className="muted">Contains Crown copyright information licensed under the Open Government Licence v3.0.</p>}
       <SaveForReview item={{kind: 'feed', id: story.id, title: story.title, url: story.url}}/>
     </header>
     {(story.summary || story.lesson) && <section className="feed-context" aria-label="Editorial context">

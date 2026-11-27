@@ -50,7 +50,7 @@ export type RetailRecord = {
 }
 
 export type RetailRegister = {version: number; reviewed_on: string; records: RetailRecord[]}
-export type Story = {id: string; source: string; title: string; url: string; date: string; evidence?: string;
+export type Story = {id: string; source: string; sourceKey?: string; title: string; url: string; date: string; evidence?: string;
   kind: 'Official' | 'Press' | 'Research' | 'Cyber watch'; summary?: string; lesson?: string}
 export type Period = 'daily' | 'weekly'
 export type BriefingStatus = {state: string; generated_at: string | null; validated_at: string | null}
@@ -66,15 +66,17 @@ export type Snapshot = {
   history: HistoryDay[] | null
   browserCheckedAt: string
   siteStatus: {prepared_at: string; data_updated_at: string | null} | null
-  headlineChecks: {name: string; checkedAt: string | null; coverage: string}[]
+  headlineChecks: {key?: string; name: string; checkedAt: string | null; coverage: string}[]
   retail: RetailRegister | null
 }
 
 export const hostedPreview = import.meta.env.MODE === 'hosted'
-const official = {ncsc: 'UK NCSC', cisa: 'US CISA', cert_eu_advisories: 'CERT-EU advisories', cert_eu_briefs: 'CERT-EU cyber briefs'}
+const officialPublishers = {ncsc: 'UK NCSC', cisa: 'US CISA', cert_eu_advisories: 'CERT-EU advisories',
+  cert_eu_briefs: 'CERT-EU cyber briefs', nhs_cyber: 'NHS England', moj_cyber: 'Ministry of Justice · GOV.UK',
+  treasury_cyber: 'HM Treasury · GOV.UK'}
 const press = {register: 'The Register', record: 'The Record', bleeping: 'BleepingComputer', neowin: 'Neowin',
   securityweek: 'SecurityWeek', sans: 'SANS Internet Storm Center'}
-const publishers: Record<string, string> = {...official, ...press}
+const publishers: Record<string, string> = {...officialPublishers, ...press}
 export const publicLabels: Record<string, string> = {uk_direct: 'Direct UK retail', sector: 'Sector-related',
   unestablished: 'Relevance unestablished', catalogue: 'Catalogue evidence', first_party: 'First-party disclosure',
   attributed: 'Attributed reporting', ecommerce: 'E-commerce', customer_data: 'Customer data', supply_chain: 'Supply chain'}
@@ -121,11 +123,11 @@ function readStories(value: unknown, kind: 'Official' | 'Press'): Story[] {
   if (!object(value) || !Array.isArray(value.stories)) return []
   return value.stories.flatMap((row: unknown) => {
     if (!object(row) || typeof row.id !== 'string' || typeof row.title !== 'string' ||
-      typeof row.source !== 'string' || !Object.hasOwn(kind === 'Official' ? official : press, row.source)) return []
+      typeof row.source !== 'string' || !Object.hasOwn(kind === 'Official' ? officialPublishers : press, row.source)) return []
     const date = kind === 'Official' ? row.published_at : row.date
     const url = safeUrl(row.url)
     if (typeof date !== 'string' || !Number.isFinite(Date.parse(date)) || !url) return []
-    return [{id: row.id, title: row.title, source: publishers[row.source], url, date,
+    return [{id: row.id, title: row.title, source: publishers[row.source], sourceKey: row.source, url, date,
       evidence: safeUrl(row.evidence_url) ?? undefined, kind: row.source === 'sans' ? 'Research' : kind}]
   })
 }
@@ -180,8 +182,8 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const flashUrl = safeUrl(flagged?.url)
   const preparedAt = object(publication) && timestamp(publication.prepared_at)
   const headlineChecks = [
-    ...Object.entries(publishers).filter(([key]) => ['ncsc', 'cisa', 'cert_eu_advisories', 'cert_eu_briefs'].includes(key)).map(([key, name]) =>
-      ({name, checkedAt: object(official) ? timestamp(official.checked_at) : null,
+    ...Object.entries(officialPublishers).map(([key, name]) =>
+      ({key, name, checkedAt: object(official) ? timestamp(official.checked_at) : null,
         coverage: object(official) && object(official.sources) && official.sources[key] === 'current' ? 'Checked' : 'Unavailable'})),
     {name: 'Cyber news and research', checkedAt: object(press) ? timestamp(press.checked_at) : null,
       coverage: !object(press) ? 'Unavailable' : press.research === 'unavailable' ? 'Research incomplete' : 'Checked'}

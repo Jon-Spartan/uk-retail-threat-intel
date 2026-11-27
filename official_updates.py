@@ -29,6 +29,19 @@ SOURCES = {
     "cert_eu_briefs": ("cert.europa.eu", "https://cert.europa.eu/publications/threat-intelligence-rss",
                        r"/publications/threat-intelligence/cb[0-9]{2}-[0-9]{2}"),
 }
+LEGACY_SOURCES = frozenset(SOURCES)
+GOV_NEWS = "https://www.gov.uk/search/news-and-communications.atom?keywords=cyber&organisations%5B%5D="
+GOV_ARTICLE = r"/government/(?:news|publications|speeches|consultations)/[a-z0-9-]+"
+SOURCES.update({
+    "nhs_cyber": ("digital.nhs.uk", "https://digital.nhs.uk/feed/cyber-alerts-feed.xml",
+                  r"/cyber-alerts/[0-9]{4}/cc-[0-9]+"),
+    "moj_cyber": ("www.gov.uk", GOV_NEWS + "ministry-of-justice", GOV_ARTICLE),
+    "treasury_cyber": ("www.gov.uk", GOV_NEWS + "hm-treasury", GOV_ARTICLE),
+})
+GOV_CYBER = re.compile(
+    r"\b(?:cyber(?:security|crime|attack| resilience)?|ransomware|phishing|data breach(?:es)?|operational resilience)\b",
+    re.IGNORECASE,
+)
 KEV_ANNOUNCEMENT = re.compile(r"known[- ]exploited[- ]vulnerabilit|\bkev\b", re.IGNORECASE)
 
 
@@ -59,7 +72,8 @@ def validate_updates(document, *, restoring=False):
     checked = utc_time(document["checked_at"])
     states, stories = document["sources"], document["stories"]
     if (not checked or not isinstance(states, dict)
-            or (states.keys() != SOURCES.keys() and not (restoring and states.keys() == PREVIOUS_SOURCES))
+            or (states.keys() != SOURCES.keys() and states.keys() != LEGACY_SOURCES
+                and not (restoring and states.keys() == PREVIOUS_SOURCES))
             or any(state not in ("current", "unavailable") for state in states.values())
             or not isinstance(stories, list) or len(stories) > len(states) * PER_SOURCE_LIMIT):
         raise ValueError("Invalid official updates coverage.")
@@ -107,6 +121,10 @@ def parse_stories(source, body, checked):
         if (not url or not valid_title(title)
                 or (source == "cisa" and KEV_ANNOUNCEMENT.search(title))):
             continue
+        if source in {"moj_cyber", "treasury_cyber"}:
+            summary = re.sub(r"<[^>]*>", " ", unescape(entry.get("summary", "")[:4000]))
+            if not GOV_CYBER.search(f"{title} {summary}"):
+                continue
         try:
             published = publication_time(source, entry)
         except (ValueError, OverflowError):
@@ -143,8 +161,12 @@ def refresh_updates(path, checked=None):
         else:
             states[source] = "current"
 
+    # Departmental feeds can cite the same GOV.UK page. Keep one canonical record.
+    unique = {}
+    for story in stories:
+        unique.setdefault(story["id"], story)
     document = {"checked_at": checked.isoformat(), "sources": states,
-                "stories": sorted(stories, key=story_order, reverse=True)}
+                "stories": sorted(unique.values(), key=story_order, reverse=True)}
     validate_updates(document)
     atomic_write(path, json.dumps(document, ensure_ascii=False, indent=2) + "\n")
 

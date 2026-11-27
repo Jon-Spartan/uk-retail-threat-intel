@@ -803,7 +803,8 @@ async function loadOfficialUpdates() {
   let message = 'Official headlines are currently unavailable.';
   if (officialSnapshot) {
     const {checked_at: checkedAt, stories, sources} = officialSnapshot;
-    renderStoryRows(document.getElementById('officialUpdatesList'), stories, officialPublishers, 8 * officialPublishers.size);
+    renderStoryRows(document.getElementById('officialUpdatesList'), stories.filter(story => officialPublishers.has(story?.source)),
+      officialPublishers, 8 * officialPublishers.size);
     const unavailable = [...officialPublishers].filter(([id]) => sources?.[id] !== 'current')
       .map(([, publisher]) => publisher.label);
     const details = [];

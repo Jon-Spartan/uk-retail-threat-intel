@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from feed_transport import FeedError
-from official_updates import parse_stories, refresh_updates, validate_updates
+from official_updates import LEGACY_SOURCES, SOURCES, parse_stories, refresh_updates, validate_updates
 
 
 NOW = datetime(2026, 11, 26, tzinfo=timezone.utc)
@@ -24,6 +24,7 @@ def rss(*items):
 
 
 DATE = "Wed, 25 Nov 2026 12:00:00 GMT"
+SECTOR_STATES = dict.fromkeys(SOURCES.keys() - LEGACY_SOURCES, "current")
 
 
 class OfficialUpdatesTests(unittest.TestCase):
@@ -51,26 +52,28 @@ class OfficialUpdatesTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "official_updates.json"
             with patch("feed_transport.download_source", side_effect=[
-                rss(("NCSC story", ARTICLE, DATE)), rss(("CISA story", ADVISORY, DATE)), rss(), rss(),
+                rss(("NCSC story", ARTICLE, DATE)), rss(("CISA story", ADVISORY, DATE)), rss(), rss(), rss(), rss(), rss(),
             ]):
                 refresh_updates(path, NOW)
             previous = json.loads(path.read_text(encoding="utf-8"))
-            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), b"<html/>", rss(), rss()]):
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), b"<html/>", *[rss()] * 5]):
                 refresh_updates(path, NOW + timedelta(minutes=15))
             retained = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(retained["stories"], previous["stories"])
             self.assertEqual(retained["sources"], {
                 "ncsc": "unavailable", "cisa": "unavailable", "cert_eu_advisories": "current", "cert_eu_briefs": "current",
+                **SECTOR_STATES,
             })
             retained["stories"][0]["url"] = "https://example.com/other"
             with self.assertRaises(ValueError):
                 validate_updates(retained)
-            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss(), rss(), rss()]):
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), *[rss()] * 6]):
                 refresh_updates(path, NOW + timedelta(days=31))
             expired = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(expired["stories"], [])
             self.assertEqual(expired["sources"], {
                 "ncsc": "unavailable", "cisa": "current", "cert_eu_advisories": "current", "cert_eu_briefs": "current",
+                **SECTOR_STATES,
             })
 
     def test_first_collection_preserves_a_previous_snapshot_and_adds_dated_cert_eu_citations(self):
@@ -87,10 +90,23 @@ class OfficialUpdatesTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "official_updates.json"
             path.write_text(json.dumps(earlier), encoding="utf-8")
-            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss(), body, brief]):
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss(), body, brief, rss(), rss(), rss()]):
                 refresh_updates(path, NOW + timedelta(minutes=15))
             updated = json.loads(path.read_text(encoding="utf-8"))
             validate_updates(updated)
         self.assertEqual([item["source"] for item in updated["stories"]], ["cert_eu_advisories", "cert_eu_briefs", "ncsc"])
         self.assertEqual(updated["stories"][0]["url"], CERT_ADVISORY)
         self.assertEqual(updated["stories"][0]["published_at"], "2026-11-25T21:00:00+00:00")
+
+    def test_sector_feeds_filter_on_context_without_publishing_it(self):
+        gov = "https://www.gov.uk/government/news/fixture-update"
+        nhs = "https://digital.nhs.uk/cyber-alerts/2026/cc-10000"
+        body = rss(("Operational update", gov, DATE), ("Unrelated announcement", gov + "-other", DATE))
+        body = body.replace(b"Excluded body", b"Response to ransomware", 1)
+        for source in ("moj_cyber", "treasury_cyber"):
+            records = parse_stories(source, body, NOW)
+            self.assertEqual([row["url"] for row in records], [gov])
+            self.assertNotIn("ransomware", json.dumps(records))
+        records = parse_stories("nhs_cyber", rss(("Patient system notice", nhs, DATE),
+                                                 ("External", nhs.replace("digital.nhs.uk", "example.com"), DATE)), NOW)
+        self.assertEqual([row["url"] for row in records], [nhs])

@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-BXem3iOs.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-BroVopI3.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -381,8 +381,14 @@ test('sector and AI views match headlines locally and show coverage gaps', async
   const board = await dashboard(t, {
     'data/threats.json': [],
     'data/intelligence_status.json': {collection: collection('current')},
-    'data/official_updates.json': {stories: titles.map((title, index) => ({id: 'sector-' + index,
-      title, source: 'ncsc', url: sourceUrl, published_at: hoursAgo(index)}))}
+    'data/official_updates.json': {stories: [
+      ...titles.map((title, index) => ({id: 'sector-' + index,
+        title, source: 'ncsc', url: sourceUrl, published_at: hoursAgo(index)})),
+      ...['moj_cyber', 'treasury_cyber', 'nhs_cyber'].map((source, index) => ({
+        id: 'sector-source-' + index, title: 'Publisher update ' + index, source,
+        url: sourceUrl, published_at: hoursAgo(index)
+      }))
+    ]}
   }, {pathSuffix: '', hash: '#/legal', legacy: false});
   const {page} = board;
   const pages = ['Legal Sector', 'Finance Sector', 'Healthcare Sector', 'AI Intelligence'];
@@ -392,6 +398,7 @@ test('sector and AI views match headlines locally and show coverage gaps', async
     const matches = page.getByRole('link', {name: titles[index], exact: true});
     await matches.waitFor();
     assert.equal(await matches.getAttribute('href'), '#/feed/sector-' + index);
+    if (index < 3) await page.getByRole('link', {name: 'Publisher update ' + index, exact: true}).waitFor();
     assert.equal(await page.getByRole('link', {name: 'Retail bulletin', exact: true}).count(), 0);
   }
   assert.match(await page.title(), /Cyber Threat Intelligence$/);
