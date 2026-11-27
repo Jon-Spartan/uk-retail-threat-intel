@@ -118,7 +118,7 @@ export function Feed({snapshot, selected, source}: {snapshot: Snapshot | null; s
           <span className="feed-reader-caption">Selected report</span>
           {story && reports.includes(story) && <span>{reports.indexOf(story) + 1} of {reports.length}</span>}
         </div>
-        <div className="feed-reader-content">
+        <div className="feed-reader-content" key={story?.id ?? 'empty'} role="region" aria-label="Report details" tabIndex={0}>
           {story ? <ReadingPane story={story} reports={reports} source={source}/> :
             <Empty title={selected ? 'Report unavailable in this snapshot' : 'No report selected'}>
               {selected ? <a href={feedHref(source)}>Return to reports</a> : 'Choose a report to see its sources.'}

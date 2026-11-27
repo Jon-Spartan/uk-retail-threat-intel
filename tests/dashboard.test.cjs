@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-D5FcXfx2.js', 'assets/index-DXIiyd97.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-BgQcWS4k.js', 'assets/index-iZXF-9D1.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -420,6 +420,13 @@ test('redesigned Feed separates evidence actions and retains filters on mobile n
     ]}
   }, {pathSuffix: '', hash: '#/feed', legacy: false});
   const {page, requests} = board;
+  await page.setViewportSize({width: 1440, height: 900});
+  await page.getByRole('link', {name: /Official guidance fixture/}).waitFor();
+  const listing = await page.getByRole('region', {name: 'Latest reports'}).boundingBox();
+  const reader = await page.getByRole('article', {name: 'Selected report'}).boundingBox();
+  assert.ok(listing && reader);
+  assert.ok(Math.abs(listing.width - reader.width) <= 1 && Math.abs(listing.height - reader.height) <= 1);
+  assert.equal(await page.getByRole('region', {name: 'Report details'}).evaluate(element => getComputedStyle(element).overflowY), 'auto');
   await page.setViewportSize({width: 390, height: 844});
   const sources = page.getByRole('navigation', {name: 'Report sources'});
   await page.getByRole('link', {name: /Official guidance fixture/}).waitFor();
