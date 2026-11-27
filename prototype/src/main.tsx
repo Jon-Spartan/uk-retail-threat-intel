@@ -8,12 +8,14 @@ import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
 import {cyberWatch, Roundup} from './editorial'
 import {ReviewQueueProvider, ReviewQueueView} from './reviewQueue'
 import {TopicWatch} from './topicWatch'
+import {DisclosureWatch} from './disclosures'
 import {Icon, State} from './ui'
 import './style.css'
 
 const views = {
   overview: {title: 'Executive Overview', description: 'Monitor the public UK retail cyber threat landscape.', icon: 'overview', group: 'Overview'},
   feed: {title: 'Intelligence Feed', description: 'Find security reporting and verify it against the original sources.', icon: 'feed', group: 'Explore'},
+  disclosures: {title: 'Disclosure Watch', description: 'Read reviewed public notices and follow-up statements.', icon: 'feed', group: 'Explore'},
   radar: {title: 'Vulnerability Radar', description: 'Investigate public CVEs and compare documented evidence.', icon: 'radar', group: 'Explore'},
   retail: {title: 'Retail Intelligence', description: 'Explore reviewed incidents and guidance relevant to retail.', icon: 'retail', group: 'Sectors'},
   legal: {title: 'Legal Sector', description: 'Explore public cyber reporting about law firms and legal services.', icon: 'feed', group: 'Sectors'},
@@ -178,7 +180,8 @@ function App() {
         <Flash snapshot={snapshot}/>
         {!current.valid && <div className="notice">This route is unavailable in the prototype. Choose a view in the navigation.</div>}
         <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
-        {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
+        {current.view === 'retail' && <><Retail snapshot={snapshot} selected={current.id}/><DisclosureWatch sector="retail"/></>}
+        {current.view === 'disclosures' && <DisclosureWatch/>}
         {(current.view === 'legal' || current.view === 'finance' || current.view === 'healthcare' || current.view === 'ai') &&
           <TopicWatch key={current.view} topic={current.view} snapshot={snapshot}/>}
         {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}

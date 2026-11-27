@@ -2,6 +2,7 @@ import {useState} from 'react'
 import {recordHref, showDate} from './data'
 import type {Snapshot} from './data'
 import {Bars, Empty, External, Metric, Panel, State} from './ui'
+import {DisclosureWatch} from './disclosures'
 
 export const watchTopics = {
   legal: /\b(?:law firms?|legal services|law practices?|solicitors?|legal aid|courts? service)\b/i,
@@ -98,7 +99,8 @@ export function TopicWatch({topic, snapshot}: {topic: keyof typeof watchTopics; 
         'Headline coverage is unavailable.' : 'Matches will appear when the available feeds carry relevant headlines.'}
     </Empty>}
   </Panel>
-  {source && <div className="main-grid">{resourcePanel}
+    {topic !== 'ai' && <DisclosureWatch sector={topic}/>}
+    {source && <div className="main-grid">{resourcePanel}
     <Panel title="Evidence and coverage" detail="How the sector view is populated">
       <p>Sector feed items come from the designated publisher. General feed matches use headline wording and can miss relevant reports.</p>
       <p>Use the original source to confirm relevance. Headline counts describe reporting coverage.</p>

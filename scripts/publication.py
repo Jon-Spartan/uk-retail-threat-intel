@@ -42,7 +42,7 @@ ASSETS = (
     "SCORING.md",
     "SOURCES.md",
     REGISTER,
-    "assets/index-DuRk6SZb.js",
+    "assets/index-DtPG66RZ.js",
     "assets/index-Cv_9NMEn.css",
     "licenses/react.txt",
     "licenses/react-dom.txt",
@@ -55,7 +55,7 @@ ASSETS = (
 ASSET_SOURCES = {
     "index.html": "redesign/index.html",
     "classic.html": "redesign/index.html",
-    "assets/index-DuRk6SZb.js": "redesign/assets/index-DuRk6SZb.js",
+    "assets/index-DtPG66RZ.js": "redesign/assets/index-DtPG66RZ.js",
     "assets/index-Cv_9NMEn.css": "redesign/assets/index-Cv_9NMEn.css",
     "licenses/react.txt": "redesign/licenses/react.txt",
     "licenses/react-dom.txt": "redesign/licenses/react-dom.txt",

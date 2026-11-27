@@ -75,6 +75,8 @@ jobs:
         run: python threat_intel_pipeline.py
       - name: Collect official story headlines
         run: python -m official_updates
+      - name: Check for disclosure candidates
+        run: python -m disclosure_watch data/official_updates.json --count-only
       - name: Collect cyber news links
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

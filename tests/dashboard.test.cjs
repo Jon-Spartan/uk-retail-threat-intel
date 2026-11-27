@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-DuRk6SZb.js', 'assets/index-Cv_9NMEn.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-DtPG66RZ.js', 'assets/index-Cv_9NMEn.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -430,6 +430,24 @@ test('sector and AI views match headlines locally and show coverage gaps', async
   }
   await page.setViewportSize({width: 390, height: 844});
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  board.assertQuiet();
+});
+
+test('Disclosure Watch groups original notices and limits sector views to reviewed records', async t => {
+  const board = await dashboard(t, {
+    'data/threats.json': [],
+    'data/intelligence_status.json': {collection: collection('current')}
+  }, {pathSuffix: '', hash: '#/disclosures', legacy: false});
+  const {page} = board;
+  await page.getByRole('heading', {name: 'Reviewed disclosures'}).waitFor();
+  const synnovis = page.getByRole('heading', {name: 'Synnovis pathology services incident'});
+  assert.equal(await synnovis.locator('..').getByRole('link', {name: 'NHS England'}).count(), 2);
+  await page.getByRole('link', {name: 'Legal Sector', exact: true}).click();
+  await page.getByRole('heading', {name: 'Legal Sector', exact: true}).waitFor();
+  await page.getByRole('heading', {name: 'Legal Aid Agency cyber incident', exact: true}).waitFor();
+  assert.equal(await synnovis.count(), 0);
+  await page.getByRole('link', {name: 'View all reviewed disclosures'}).click();
+  await synnovis.waitFor();
   board.assertQuiet();
 });
 
