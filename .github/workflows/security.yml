@@ -55,6 +55,14 @@ jobs:
             exit 1
           fi
           python -m scripts.publication stage-site data public-site
+      - name: Audit and verify the hosted dashboard build
+        run: |
+          pnpm --dir prototype install --frozen-lockfile --ignore-scripts
+          pnpm --dir prototype audit
+          cd prototype
+          node seed.mjs ../public-site
+          pnpm run build --mode hosted
+          node hosted.mjs verify
       - name: Run dashboard browser regressions
         run: |
           pnpm exec playwright install --with-deps --only-shell chromium

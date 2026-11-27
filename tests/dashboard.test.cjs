@@ -10,9 +10,10 @@ const retailRegister = require('../assets/retail-intelligence.json');
 const site = path.resolve(process.env.DASHBOARD_TEST_SITE || 'public-site');
 const origin = 'https://pages.example.invalid';
 const base = '/uk-retail-threat-intel/';
-const allowedFiles = new Set(['index.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
+const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
-  'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico']);
+  'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
+  'assets/index-CzkkQVU7.js', 'assets/index-DIbjfxCy.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const privateKeyword = 'private-keyword-fixture';
 const sourceUrl = 'https://news.example.invalid/checkout';
 const layoutMarker = '<img data-test-injected src="/unexpected-image">';
@@ -44,7 +45,7 @@ function collection(state, hours = 0) {
     last_success_at: hoursAgo(hours + 1), feeds: []};
 }
 
-async function dashboard(t, initialResponses, {checkCsp = false, clock = false, hash = ''} = {}) {
+async function dashboard(t, initialResponses, {checkCsp = false, clock = false, hash = '', pathSuffix = 'classic.html'} = {}) {
   const context = await browser.newContext({offline: true, serviceWorkers: 'block'});
   t.after(() => context.close());
   const page = await context.newPage();
@@ -83,7 +84,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
     if (allowedFiles.has(file)) {
       if (file === 'favicon.ico') return route.fulfill({status: 404});
       const staged = path.join(site, file);
-      if (file === 'index.html' && checkCsp) {
+      if (file === 'classic.html' && checkCsp) {
         const html = await fs.readFile(staged, 'utf8');
         return route.fulfill({contentType: 'text/html',
           body: html.replace('</body>', '<script>window.fixtureInlineRan = true</script></body>')});
@@ -93,7 +94,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
     unexpected.push(request.url());
     return route.fulfill({status: 404});
   });
-  await page.goto(origin + base + hash, {waitUntil: 'domcontentloaded'});
+  await page.goto(origin + base + pathSuffix + hash, {waitUntil: 'domcontentloaded'});
   return {page, requests, responses, assertQuiet() {
     assert.deepEqual(unexpected, []);
     assert.deepEqual(errors, []);
@@ -262,6 +263,33 @@ test('Retail Centre searches locally, preserves unknowns and safely links review
   await page.getByText('No reviewed records match these filters.').waitFor();
   assert.equal(requests.filter(request => request.url.includes('retail-intelligence.json')).length, before);
   assert.equal(requests.some(request => request.url.includes('nonmatching')), false);
+  board.assertQuiet();
+});
+
+test('hosted redesign reads canonical datasets and routes legacy tools to their existing view', async t => {
+  const current = collection('current');
+  const board = await dashboard(t, {
+    'data/threats.json': [executiveKev('10001', hoursAgo(4))],
+    'data/intelligence_status.json': {collection: current},
+    'data/flash_alert.json': 404
+  }, {pathSuffix: '', hash: '#/radar'});
+  const {page, requests} = board;
+  await page.getByRole('heading', {name: 'Vulnerability Radar', exact: true}).waitFor();
+  await page.getByText('1 matching records').waitFor();
+  assert.ok(requests.some(request => new URL(request.url).pathname === base + 'data/threats.json'));
+  assert.ok(requests.some(request => new URL(request.url).pathname === base + 'assets/retail-intelligence.json'));
+  const search = page.getByRole('button', {name: 'Search intelligence', exact: true});
+  await search.click();
+  await page.getByRole('dialog').getByRole('searchbox').fill('CVE-2026-10001');
+  await page.getByRole('dialog').getByRole('link', {name: /10001/}).waitFor();
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').waitFor({state: 'hidden'});
+  assert.ok(await search.evaluate(node => node === document.activeElement));
+  await page.getByRole('link', {name: 'More tools'}).click();
+  await page.getByRole('navigation', {name: 'Dashboard views'}).waitFor();
+  await page.goto(origin + base + '#tabAutomationContent');
+  await page.getByRole('heading', {name: /Threat Intelligence Automation/}).waitFor();
+  assert.equal(new URL(page.url()).pathname, base + 'classic.html');
   board.assertQuiet();
 });
 

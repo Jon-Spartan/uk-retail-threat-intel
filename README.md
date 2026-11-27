@@ -117,6 +117,8 @@ The Python suite uses fixtures and mocked transport. The browser suite serves th
 
 ## GitHub Pages deployment
 
+The new layout is the Pages entry point. The More tools link opens the classic dashboard for alerts, briefings, exports and My Stack. Both use the same validated public dataset. See [the front-end build instructions](prototype/README.md) for the locked build, local review and publication manifest.
+
 After explicit publication approval, push only the clean release branch to the independent GitHub repository. Its history starts with the approved dataset. Use the latest source policy when approving additional sources.
 
 1. Put the reviewed changes on the default branch and allow GitHub Actions to run. Keep `ENABLE_PAGES_PUBLICATION` unset for the first hosted collection and validation check.

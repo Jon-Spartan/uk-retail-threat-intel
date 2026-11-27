@@ -1,0 +1,23 @@
+{
+  "name": "uk-retail-cti-prototype",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "tsc --noEmit && vite build --base ./",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node review.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.1",
+    "@types/react": "19.3.3",
+    "@types/react-dom": "19.3.0",
+    "playwright": "1.65.1",
+    "typescript": "7.0.2",
+    "vite": "8.4.0"
+  }
+}

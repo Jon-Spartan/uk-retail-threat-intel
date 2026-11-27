@@ -36,6 +36,7 @@ OPTIONAL = (
 )
 ASSETS = (
     "index.html",
+    "classic.html",
     "SCORING.md",
     "SOURCES.md",
     "assets/dashboard.js",
@@ -49,7 +50,29 @@ ASSETS = (
     "assets/jetbrains-mono.woff2",
     "assets/jetbrains-mono-OFL.txt",
     "assets/tailwindcss-LICENSE.txt",
+    "assets/index-CzkkQVU7.js",
+    "assets/index-DIbjfxCy.css",
+    "licenses/react.txt",
+    "licenses/react-dom.txt",
+    "licenses/scheduler.txt",
+    "fonts/inter.woff2",
+    "fonts/inter-OFL.txt",
+    "fonts/jetbrains-mono.woff2",
+    "fonts/jetbrains-mono-OFL.txt",
 )
+ASSET_SOURCES = {
+    "index.html": "redesign/index.html",
+    "classic.html": "index.html",
+    "assets/index-CzkkQVU7.js": "redesign/assets/index-CzkkQVU7.js",
+    "assets/index-DIbjfxCy.css": "redesign/assets/index-DIbjfxCy.css",
+    "licenses/react.txt": "redesign/licenses/react.txt",
+    "licenses/react-dom.txt": "redesign/licenses/react-dom.txt",
+    "licenses/scheduler.txt": "redesign/licenses/scheduler.txt",
+    "fonts/inter.woff2": "assets/inter.woff2",
+    "fonts/inter-OFL.txt": "assets/inter-OFL.txt",
+    "fonts/jetbrains-mono.woff2": "assets/jetbrains-mono.woff2",
+    "fonts/jetbrains-mono-OFL.txt": "assets/jetbrains-mono-OFL.txt",
+}
 RECORD_TEXT = {
     "id", "title", "source", "url", "date", "severity", "subsector", "actor",
     "mitre", "mitre_id", "mitre_tactic", "mitre_name", "summary", "advisory",
@@ -417,9 +440,10 @@ def restore_data(source, destination):
 def stage_site(source, destination, root):
     files = validate_release_data(source)
     require(not destination.exists() and not destination.is_symlink(), "Use a fresh site staging directory.")
-    assets = {name: check_file(root / name) for name in ASSETS}
+    assets = {name: check_file(root / ASSET_SOURCES.get(name, name)) for name in ASSETS}
     validate_register(read_json(assets[REGISTER]))
-    (destination / "assets").mkdir(parents=True)
+    for folder in ("assets", "fonts", "licenses"):
+        (destination / folder).mkdir(parents=True)
     copy_files(assets, destination)
     copy_files(files, destination / "data")
 
