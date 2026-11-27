@@ -1,5 +1,25 @@
 [
   {
+    "source": "register",
+    "url": "https://www.theregister.com/security/2026/11/26/significant-number-of-customer-records-pwned-in-flight-centre-travel-group-breach/5312360",
+    "evidence_url": "https://announcements.asx.com.au/asxpdf/20261126/pdf/07731r59zrz6zd.pdf",
+    "date": "2026-11-26",
+    "headings": [
+      "Flight Centre investigates potential access to customer data through a booking supplier",
+      "Flight Centre says a supplier incident affected its accommodation booking system"
+    ]
+  },
+  {
+    "source": "record",
+    "url": "https://therecord.media/japan-mcdonalds-cyberattack-breach",
+    "evidence_url": "https://www.mcdonalds.co.jp/company/info/261120a/",
+    "date": "2026-11-24",
+    "headings": [
+      "McDonald’s Japan confirms unauthorised access to some of its app data",
+      "McDonald’s Japan says an app incident affected purchase history and location data"
+    ]
+  },
+  {
     "source": "bleeping",
     "url": "https://www.bleepingcomputer.com/news/security/1password-customer-data-stolen-after-employee-github-account-breach/",
     "evidence_url": "https://1password.com/blog/update-on-nov-2026-security-incident",

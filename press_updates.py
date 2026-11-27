@@ -20,6 +20,8 @@ PRESS_PATHS = {
     "bleeping": ("www.bleepingcomputer.com", r"/news/security/[a-z0-9-]+/"),
     "neowin": ("www.neowin.net", r"/news/[a-z0-9-]+/"),
     "securityweek": ("www.securityweek.com", r"/[a-z0-9-]+/"),
+    "register": ("www.theregister.com", r"/security/[0-9]{4}/[0-9]{2}/[0-9]{2}/[a-z0-9-]+/[0-9]+"),
+    "record": ("therecord.media", r"/[a-z0-9-]+"),
 }
 RESEARCH_TOPIC = re.compile(r"\b(?:patch\w*|updates?|authenticat\w*|syslog|logging|defen[cs]\w*|"
                             r"incident response|detection|monitoring|mitigat\w*)\b", re.I)

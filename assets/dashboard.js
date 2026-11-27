@@ -727,12 +727,16 @@ function dateAge(value) {
 
 const officialPublishers = new Map([
   ['ncsc', {label: 'UK NCSC', host: 'www.ncsc.gov.uk'}],
-  ['cisa', {label: 'US CISA', host: 'www.cisa.gov'}]
+  ['cisa', {label: 'US CISA', host: 'www.cisa.gov'}],
+  ['cert_eu_advisories', {label: 'CERT-EU advisories', host: 'cert.europa.eu'}],
+  ['cert_eu_briefs', {label: 'CERT-EU cyber briefs', host: 'cert.europa.eu'}]
 ]);
 const pressPublishers = new Map([
   ['bleeping', {label: 'Bleeping Computer', host: 'www.bleepingcomputer.com'}],
   ['neowin', {label: 'Neowin', host: 'www.neowin.net'}],
   ['securityweek', {label: 'SecurityWeek', host: 'www.securityweek.com'}],
+  ['register', {label: 'The Register', host: 'www.theregister.com'}],
+  ['record', {label: 'The Record', host: 'therecord.media'}],
   ['sans', {label: 'SANS Internet Storm Center', host: 'isc.sans.edu'}]
 ]);
 const officialDate = new Intl.DateTimeFormat('en-GB', {dateStyle: 'medium', timeZone: 'Europe/London'});
@@ -743,12 +747,12 @@ let officialSnapshot = null;
 let pressSnapshot = null;
 const renderedStories = new WeakMap();
 
-function renderStoryRows(list, stories, publishers) {
+function renderStoryRows(list, stories, publishers, limit) {
   const identity = JSON.stringify(stories);
   if (identity === renderedStories.get(list)) return;
   renderedStories.set(list, identity);
   const rows = [];
-  for (const story of stories.slice(0, 16)) {
+  for (const story of stories.slice(0, limit)) {
     const publisher = publishers.get(story?.source);
     const url = safeHttpUrl(story?.url);
     const publishedAt = story?.published_at ?? story?.date;
@@ -799,7 +803,7 @@ async function loadOfficialUpdates() {
   let message = 'Official headlines are currently unavailable.';
   if (officialSnapshot) {
     const {checked_at: checkedAt, stories, sources} = officialSnapshot;
-    renderStoryRows(document.getElementById('officialUpdatesList'), stories, officialPublishers);
+    renderStoryRows(document.getElementById('officialUpdatesList'), stories, officialPublishers, 8 * officialPublishers.size);
     const unavailable = [...officialPublishers].filter(([id]) => sources?.[id] !== 'current')
       .map(([, publisher]) => publisher.label);
     const details = [];
@@ -829,7 +833,7 @@ async function loadPressUpdates() {
   let message = 'Cyber news and research are currently unavailable.';
   if (pressSnapshot) {
     const list = document.getElementById('pressUpdatesList');
-    renderStoryRows(list, pressSnapshot.stories, pressPublishers);
+    renderStoryRows(list, pressSnapshot.stories, pressPublishers, 12);
     const details = [];
     if (!reachable || dateAge(pressSnapshot.checked_at) > 60 * 60 * 1000) details.push('Headlines may be stale.');
     if (pressSnapshot.research !== 'current') details.push('SANS feed unavailable. Earlier research may still be shown.');

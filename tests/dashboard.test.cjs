@@ -191,7 +191,8 @@ test('official stories update in place and retain headlines on failure', async t
   const key = 'data/official_updates.json';
   const story = {source: 'ncsc', title: 'Earlier official headline', published_at: hoursAgo(2),
     url: 'https://www.ncsc.gov.uk/news/earlier-headline'};
-  const snapshot = {checked_at: hoursAgo(0), sources: {ncsc: 'current', cisa: 'current'}, stories: [story]};
+  const snapshot = {checked_at: hoursAgo(0), sources: {ncsc: 'current', cisa: 'current',
+    cert_eu_advisories: 'current', cert_eu_briefs: 'current'}, stories: [story]};
   const {page, responses, assertQuiet} = await dashboard(t, {
     'data/threats.json': [], 'data/intelligence_status.json': 404, 'data/flash_alert.json': 404, [key]: snapshot
   }, {clock: true, hash: '#official-updates'});
@@ -202,11 +203,14 @@ test('official stories update in place and retain headlines on failure', async t
 
   const latest = {...story, title: 'New official headline', url: 'https://www.ncsc.gov.uk/news/new-headline',
     published_at: hoursAgo(1)};
-  responses[key] = {...snapshot, stories: [latest, story, {...story, url: 'https://www.ncsc.gov.uk.example.invalid/news/lookalike'},
+  const advisory = {source: 'cert_eu_advisories', title: 'CERT-EU advisory fixture', published_at: hoursAgo(3),
+    url: 'https://cert.europa.eu/publications/security-advisories/2026-022'};
+  responses[key] = {...snapshot, stories: [latest, story, advisory, {...story, url: 'https://www.ncsc.gov.uk.example.invalid/news/lookalike'},
     {...story, url: 'javascript:alert(1)'}]};
   await page.clock.fastForward(61000);
   await page.getByRole('link', {name: latest.title}).waitFor();
-  assert.equal(await rows.count(), 2);
+  assert.equal(await rows.count(), 3);
+  assert.match(await rows.last().innerText(), /CERT-EU advisories/);
   assert.match(await rows.first().innerText(), /New official headline\s+UK NCSC/);
   assert.equal(await earlier.evaluate(link => document.activeElement === link), true);
   assert.equal(new URL(page.url()).hash, '#official-updates');

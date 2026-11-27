@@ -352,7 +352,7 @@ def validate_executive_previous(document, collection):
 def validate_data(directory, allow_legacy=False, *, strict=True):
     files = data_files(directory, strict=strict)
     if OFFICIAL_UPDATES_FILE in files:
-        validate_updates(read_json(files[OFFICIAL_UPDATES_FILE]))
+        validate_updates(read_json(files[OFFICIAL_UPDATES_FILE]), restoring=allow_legacy)
     if PRESS_UPDATES_FILE in files:
         validate_press(read_json(files[PRESS_UPDATES_FILE]), restoring=allow_legacy)
     records = read_json(files["threats.json"])

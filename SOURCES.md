@@ -12,11 +12,13 @@ The automatic headlines list publishes each source's title, feed date and canoni
 
 - **UK National Cyber Security Centre** supplies its own news, blog posts, guidance and reports. These headlines contain Crown copyright information licensed under the Open Government Licence v3.0. [NCSC RSS feeds](https://www.ncsc.gov.uk/information/rss-feeds) · [NCSC reuse terms](https://www.ncsc.gov.uk/section/about-this-website/terms-and-conditions) · [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 - **US Cybersecurity and Infrastructure Security Agency** supplies alerts and advisories through its public feed. The dashboard includes only citation metadata for these agency notices. [CISA advisories feed](https://www.cisa.gov/cybersecurity-advisories/all.xml)
+- **CERT-EU**, the Cybersecurity Service for the Union institutions, bodies, offices and agencies, supplies public security advisories and monthly cyber briefs. Stories show the source titles, dates and original links. CERT-EU identifies CC BY 4.0 as its reuse licence unless otherwise noted. [CERT-EU feeds](https://cert.europa.eu/blog/read-feed-and-lead-fresh-features-for-our-cyber-fans) · [Reuse terms](https://www.cert.europa.eu/legal-notice) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
 ## Cyber news and research
 
 - **SANS Internet Storm Center** supplies diary headlines through its title-only feed. The dashboard links to original diary entries on defensive topics and credits SANS Internet Storm Center. [Feeds](https://isc.sans.edu/xml.html) · [Website inclusion](https://isc.sans.edu/infocon.html)
 - **Bleeping Computer, Neowin and SecurityWeek** are cited as links to individual articles. The project writes headings from first-party disclosures and shows the disclosure alongside each press link. GitHub Actions fetches the SANS feed. The model receives only the project’s own reviewed heading options for press links. [1Password disclosure](https://1password.com/blog/update-on-nov-2026-security-incident) · [Turnitin notice](https://helpcenter.turnitin.com/hc/en-us/articles/50603173309197-Letter-from-Turnitin-CEO-Chris-Caren-to-customers-on-23-November-2026) · [European Commission briefing](https://audiovisual.ec.europa.eu/en/media/video/I-298395)
+- **The Register** and **The Record** are also cited as individual links, using original wording grounded in the company’s public statement. [The Register linking policy](https://www.theregister.com/Profile/linking/) · [Flight Centre disclosure](https://announcements.asx.com.au/asxpdf/20261126/pdf/07731r59zrz6zd.pdf) · [McDonald’s Japan notice](https://www.mcdonalds.co.jp/company/info/261120a/)
 
 ## Reviewed UK guidance
 

@@ -12,6 +12,7 @@ from official_updates import parse_stories, refresh_updates, validate_updates
 NOW = datetime(2026, 11, 26, tzinfo=timezone.utc)
 ARTICLE = "https://www.ncsc.gov.uk/news/public-statement"
 ADVISORY = "https://www.cisa.gov/news-events/cybersecurity-advisories/advisory"
+CERT_ADVISORY = "https://cert.europa.eu/publications/security-advisories/2026-022"
 
 
 def rss(*items):
@@ -50,20 +51,46 @@ class OfficialUpdatesTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "official_updates.json"
             with patch("feed_transport.download_source", side_effect=[
-                rss(("NCSC story", ARTICLE, DATE)), rss(("CISA story", ADVISORY, DATE)),
+                rss(("NCSC story", ARTICLE, DATE)), rss(("CISA story", ADVISORY, DATE)), rss(), rss(),
             ]):
                 refresh_updates(path, NOW)
             previous = json.loads(path.read_text(encoding="utf-8"))
-            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), b"<html/>"]):
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), b"<html/>", rss(), rss()]):
                 refresh_updates(path, NOW + timedelta(minutes=15))
             retained = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(retained["stories"], previous["stories"])
-            self.assertEqual(retained["sources"], {"ncsc": "unavailable", "cisa": "unavailable"})
+            self.assertEqual(retained["sources"], {
+                "ncsc": "unavailable", "cisa": "unavailable", "cert_eu_advisories": "current", "cert_eu_briefs": "current",
+            })
             retained["stories"][0]["url"] = "https://example.com/other"
             with self.assertRaises(ValueError):
                 validate_updates(retained)
-            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss()]):
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss(), rss(), rss()]):
                 refresh_updates(path, NOW + timedelta(days=31))
             expired = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(expired["stories"], [])
-            self.assertEqual(expired["sources"], {"ncsc": "unavailable", "cisa": "current"})
+            self.assertEqual(expired["sources"], {
+                "ncsc": "unavailable", "cisa": "current", "cert_eu_advisories": "current", "cert_eu_briefs": "current",
+            })
+
+    def test_first_collection_preserves_a_previous_snapshot_and_adds_dated_cert_eu_citations(self):
+        earlier = {"checked_at": NOW.isoformat(), "sources": {"ncsc": "current", "cisa": "current"},
+                   "stories": parse_stories("ncsc", rss(("Previous title", ARTICLE, DATE)), NOW)}
+        with self.assertRaises(ValueError):
+            validate_updates(earlier)
+        validate_updates(earlier, restoring=True)
+        body = rss(("Public advisory", f"\n  {CERT_ADVISORY}/\n", "Wed, 25 Nov 2026 22:00:00 CET"),
+                   ("Wrong category", "https://cert.europa.eu/publications/threat-intelligence/cb26-11/", DATE),
+                   ("Other publisher", "https://lookalike.example/publications/security-advisories/2026-022", DATE))
+        brief = rss(("Monthly brief", "https://cert.europa.eu/publications/threat-intelligence/cb26-11/",
+                     "Wed, 25 Nov 2026 20:00:00 CET"))
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "official_updates.json"
+            path.write_text(json.dumps(earlier), encoding="utf-8")
+            with patch("feed_transport.download_source", side_effect=[FeedError("Unavailable"), rss(), body, brief]):
+                refresh_updates(path, NOW + timedelta(minutes=15))
+            updated = json.loads(path.read_text(encoding="utf-8"))
+            validate_updates(updated)
+        self.assertEqual([item["source"] for item in updated["stories"]], ["cert_eu_advisories", "cert_eu_briefs", "ncsc"])
+        self.assertEqual(updated["stories"][0]["url"], CERT_ADVISORY)
+        self.assertEqual(updated["stories"][0]["published_at"], "2026-11-25T21:00:00+00:00")

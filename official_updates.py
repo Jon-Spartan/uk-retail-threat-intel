@@ -4,6 +4,7 @@ import json
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -16,11 +17,17 @@ from public_urls import validated_http_url
 FILENAME = "official_updates.json"
 RETENTION = timedelta(days=30)
 PER_SOURCE_LIMIT = 8
+FEED_HEADERS = {"User-Agent": "UK Retail Threat Intelligence (public headline collector)"}
+PREVIOUS_SOURCES = {"ncsc", "cisa"}
 SOURCES = {
     "ncsc": ("www.ncsc.gov.uk", "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
              r"/(?:news|blogs|guidance|report)/[a-z0-9-]+"),
     "cisa": ("www.cisa.gov", "https://www.cisa.gov/cybersecurity-advisories/all.xml",
              r"/news-events/(?:alerts/[0-9]{4}/[0-9]{2}/[0-9]{2}|cybersecurity-advisories)/[a-z0-9-]+"),
+    "cert_eu_advisories": ("cert.europa.eu", "https://cert.europa.eu/publications/security-advisories-rss",
+                           r"/publications/security-advisories/[0-9]{4}-[0-9]{3}"),
+    "cert_eu_briefs": ("cert.europa.eu", "https://cert.europa.eu/publications/threat-intelligence-rss",
+                       r"/publications/threat-intelligence/cb[0-9]{2}-[0-9]{2}"),
 }
 KEV_ANNOUNCEMENT = re.compile(r"known[- ]exploited[- ]vulnerabilit|\bkev\b", re.IGNORECASE)
 
@@ -46,14 +53,15 @@ def story_order(story):
     return utc_time(story["published_at"]), story["id"]
 
 
-def validate_updates(document):
+def validate_updates(document, *, restoring=False):
     if not isinstance(document, dict) or set(document) != {"checked_at", "sources", "stories"}:
         raise ValueError("Invalid official updates document.")
     checked = utc_time(document["checked_at"])
     states, stories = document["sources"], document["stories"]
-    if (not checked or not isinstance(states, dict) or states.keys() != SOURCES.keys()
+    if (not checked or not isinstance(states, dict)
+            or (states.keys() != SOURCES.keys() and not (restoring and states.keys() == PREVIOUS_SOURCES))
             or any(state not in ("current", "unavailable") for state in states.values())
-            or not isinstance(stories, list) or len(stories) > len(SOURCES) * PER_SOURCE_LIMIT):
+            or not isinstance(stories, list) or len(stories) > len(states) * PER_SOURCE_LIMIT):
         raise ValueError("Invalid official updates coverage.")
     ids = set()
     counts = dict.fromkeys(SOURCES, 0)
@@ -62,7 +70,7 @@ def validate_updates(document):
             raise ValueError("Invalid official story fields.")
         source, url = story["source"], story["url"]
         published = utc_time(story["published_at"])
-        if (not isinstance(source, str) or source not in SOURCES or not url or story_url(source, url) != url
+        if (not isinstance(source, str) or source not in states or not url or story_url(source, url) != url
                 or story["id"] != record_id(url) or story["id"] in ids or not valid_title(story["title"])
                 or (source == "cisa" and KEV_ANNOUNCEMENT.search(story["title"]))
                 or not published or not checked - RETENTION <= published <= checked):
@@ -71,6 +79,18 @@ def validate_updates(document):
         counts[source] += 1
     if max(counts.values()) > PER_SOURCE_LIMIT or stories != sorted(stories, key=story_order, reverse=True):
         raise ValueError("Invalid official story count or order.")
+
+
+def publication_time(source, entry):
+    if source.startswith("cert_eu_"):
+        raw = entry.get("published") or entry.get("updated") or ""
+        # CERT-EU uses CET and CEST in RSS. Supply the corresponding numeric UTC offset.
+        local = re.search(r" (CET|CEST)$", raw)
+        if local:
+            offset = {"CET": "+0100", "CEST": "+0200"}[local[1]]
+            return parsedate_to_datetime(raw[:local.start(1)] + offset).astimezone(timezone.utc)
+    date = entry.get("published_parsed") or entry.get("updated_parsed")
+    return datetime(*date[:6], tzinfo=timezone.utc) if date else None
 
 
 def parse_stories(source, body, checked):
@@ -82,14 +102,16 @@ def parse_stories(source, body, checked):
     stories = {}
     for raw_entry in parsed.entries:
         entry = dict(raw_entry)
-        url = story_url(source, entry.get("link"))
+        url = story_url(source, (entry.get("link") or "").strip())
         title = " ".join(unescape(entry.get("title", "")).split())
-        date = entry.get("published_parsed") or entry.get("updated_parsed")
-        if (not url or not valid_title(title) or not date
+        if (not url or not valid_title(title)
                 or (source == "cisa" and KEV_ANNOUNCEMENT.search(title))):
             continue
-        published = datetime(*date[:6], tzinfo=timezone.utc)
-        if checked - RETENTION <= published <= checked:
+        try:
+            published = publication_time(source, entry)
+        except (ValueError, OverflowError):
+            continue
+        if published and checked - RETENTION <= published <= checked:
             story = {"id": record_id(url), "source": source, "title": title, "url": url,
                      "published_at": published.isoformat()}
             if url not in stories or story_order(story) > story_order(stories[url]):
@@ -106,13 +128,13 @@ def refresh_updates(path, checked=None):
     prior = []
     if path.exists():
         previous = json.loads(path.read_text(encoding="utf-8"))
-        validate_updates(previous)
+        validate_updates(previous, restoring=True)
         prior = previous["stories"]
 
     states, stories = {}, []
     for source, (_, feed, _) in SOURCES.items():
         try:
-            stories.extend(parse_stories(source, download_source(feed), checked))
+            stories.extend(parse_stories(source, download_source(feed, headers=FEED_HEADERS), checked))
         except (RequestException, ValueError, OverflowError):
             states[source] = "unavailable"
             stories.extend(story for story in prior if story["source"] == source
