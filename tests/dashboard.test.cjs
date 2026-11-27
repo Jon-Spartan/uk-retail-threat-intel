@@ -137,8 +137,8 @@ test('executive model ranks verified retail evidence, deduplicates exploitation 
   assert.equal(model.topThreats[0].title, eligible.title);
   assert.ok(model.topThreats.every(item => item.related));
   assert.equal(model.metrics[1][1], '1');
-  assert.equal(model.metrics[2][1], '2');
-  assert.equal(model.metrics[3][1], '1');
+  assert.equal(model.metrics[2][1], '1');
+  assert.equal(model.metrics[3][1], '2');
   assert.equal(model.incidents.length, 2);
   assert.match(model.changes, /3 records added and 1 record left/);
   assert.equal(buildModel({...input, previous: {...previous, current_at: previous.previous_at}}).changes,
@@ -159,9 +159,31 @@ test('executive model ranks verified retail evidence, deduplicates exploitation 
   assert.match(generalOnly.kevNote, /Retail relevance is unestablished/);
 });
 
+test('executive charts count only validated records first seen in the 14-day UTC snapshot window', () => {
+  const collected = '2026-11-26T11:30:00Z';
+  const critical = executiveKev('10001', '2026-11-13T00:00:00Z', {severity: 'CRITICAL'});
+  const unknown = executiveKev('10002', collected, {severity: 'UNKNOWN', subsector: 'enterprise'});
+  const input = {now: Date.parse(collected), metadata: {collection: {state: 'current', data_updated_at: collected}},
+    items: [critical, unknown, executiveKev('10003', '2026-11-12T23:59:59Z'), executiveKev('10004', '2026-11-27'),
+      {...critical, id: 'carry', carried_forward: true}, {...unknown, id: 'invalid', url: 'javascript:alert(1)'}],
+    stories: [], evidenceFor: item => item.classification, safeUrl: value => value.startsWith('https://') ? value : null};
+  const model = buildModel(input);
+  assert.equal(model.charts.total, 2);
+  assert.match(model.charts.window, /13 Nov 2026.*26 Nov 2026.*UTC/);
+  assert.deepEqual(model.charts.severity.map(entry => entry.value), [1, 0, 0, 0, 1]);
+  assert.deepEqual(model.charts.categories, [{label: 'Enterprise technology', value: 1}, {label: 'Online retail', value: 1}]);
+  assert.equal(buildModel({...input, items: []}).charts.total, 0);
+  assert.equal(buildModel({...input, items: null}).charts, null);
+  const stale = buildModel({...input, now: input.now + 91 * 60000});
+  assert.equal(stale.healthStatus, 'Stale');
+  assert.deepEqual(stale.charts, model.charts);
+  assert.deepEqual(stale.recentThreats, []);
+  assert.deepEqual(stale.actions, []);
+});
+
 test('executive view opens on mobile, compares published snapshots and withholds stale KEV actions', async t => {
   const current = collection('current');
-  const item = executiveKev('10001', hoursAgo(1));
+  const item = executiveKev('10001', hoursAgo(4));
   const board = await dashboard(t, {
     'data/threats.json': [item], 'data/intelligence_status.json': {collection: current}, 'data/flash_alert.json': 404,
     'data/executive_previous.json': {current_at: current.data_updated_at, previous_at: hoursAgo(2), record_ids: []}
@@ -172,14 +194,31 @@ test('executive view opens on mobile, compares published snapshots and withholds
   assert.equal(requests.some(request => request.url.includes('executive_previous.json')), false);
   await page.getByRole('link', {name: 'Executive', exact: true}).click();
   await page.getByText(/1 record added and 0 records left/).waitFor();
-  assert.equal(await page.getByRole('heading', {name: 'Executive Intelligence Dashboard'}).isVisible(), true);
+  assert.equal(await page.getByRole('heading', {name: 'Executive Intelligence', exact: true}).isVisible(), true);
   assert.equal(await page.locator('#searchInput').isVisible(), false);
   assert.equal(await page.locator('#executiveMetrics dd').count(), 12);
   assert.match(await page.locator('#executiveThreats').innerText(), /Priority 70\/100.*Online retail/s);
+  assert.equal(await page.getByText('Historical trend unavailable').isVisible(), true);
+  assert.equal(await page.locator('#executiveObservations').getByRole('link', {name: 'CISA KEV', exact: true})
+    .getAttribute('href'), '#kev');
+  assert.equal(await page.locator('#executiveSeverity [data-severity="unknown"] strong').innerText(), '1');
+  assert.equal(await page.locator('#executiveCategories progress').getAttribute('value'), '1');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.setViewportSize({width: 1920, height: 1080});
+  const cards = await page.locator('#executiveMetrics > div').evaluateAll(nodes =>
+    nodes.map(node => node.getBoundingClientRect().top));
+  assert.equal(new Set(cards).size, 1);
+  const theme = page.getByRole('button', {name: 'Toggle Light / Dark Mode'});
+  assert.equal(await page.locator('html').evaluate(node => node.classList.contains('dark')), true);
+  await theme.click();
+  assert.equal(await page.locator('html').evaluate(node => node.classList.contains('dark')), false);
+  await theme.click();
   responses['data/intelligence_status.json'] = {collection: collection('current', 3)};
   await page.locator('#liveSyncBtn').click();
-  await page.getByText('The vulnerability snapshot is stale. Current threat counts are withheld.').waitFor();
+  await page.getByText(/The vulnerability snapshot is stale.*Snapshot dated/).waitFor();
+  assert.match(await page.locator('#executiveChartWindow').innerText(), /Stale snapshot/);
+  assert.equal(await page.locator('#executiveObservations').getByRole('link', {name: 'CISA KEV', exact: true}).count(), 0);
+  assert.match(await page.locator('#executiveCategories').innerText(), /Stale snapshot/);
   assert.equal(await page.locator('#executiveThreats li').count(), 0);
   assert.equal(await page.locator('#executiveKev li').count(), 0);
   await page.getByRole('link', {name: 'CISA KEV', exact: true}).click();

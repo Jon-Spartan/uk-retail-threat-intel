@@ -6,6 +6,8 @@ const executiveDashboard = (() => {
     ecom: 'Online retail', pos: 'Point of sale', loyalty: 'Customer accounts',
     supply: 'Supply chain', enterprise: 'Enterprise technology'
   };
+  const severityLabels = {critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', unknown: 'Unknown'};
+  const metricIcons = {priority: '▲', kev: '⚡', incidents: '◎', exploitation: '◈', actions: '✓', coverage: '▥'};
   const timeFormat = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London'
   });
@@ -68,7 +70,8 @@ const executiveDashboard = (() => {
       return url && new URL(url).protocol === 'https:' ? url : null;
     };
 
-    const records = (fresh ? items : []).flatMap(item => {
+    const hasSnapshot = Array.isArray(items) && hasVerifiedTime && (complete || partial);
+    const snapshotRecords = (hasSnapshot ? items : []).flatMap(item => {
       const evidence = evidenceFor(item);
       const url = linked(item.url);
       if (!evidence || !url || item.carried_forward) return [];
@@ -80,8 +83,10 @@ const executiveDashboard = (() => {
       const product = products.find(value => value.source === 'cisa_kev') || products[0];
       const productName = product ? [...new Set([product.vendor, product.product])]
         .filter(value => typeof value === 'string' && value.trim()).join(' ') : '';
+      const severity = typeof item.severity === 'string' ? item.severity.toLowerCase() : 'unknown';
       return [{
         title: item.title, category: categories[item.subsector] || 'Other technology',
+        severity: Object.hasOwn(severityLabels, severity) ? severity : 'unknown',
         score: evidence.score, relevance, related, confidence: evidence.confidence, url, source: item.source || 'Public reference',
         firstSeen: Date.parse(item.first_seen_at),
         added: typeof item._timestamp === 'number' && item._timestamp > 0 ? item._timestamp * 1000 : NaN,
@@ -95,7 +100,21 @@ const executiveDashboard = (() => {
     }).sort((a, b) => Number(b.related) - Number(a.related) || b.score - a.score ||
       (b.added || 0) - (a.added || 0) || a.title.localeCompare(b.title));
 
+    const records = fresh ? snapshotRecords : [];
+    const windowStart = Math.floor(updated / day) * day - 13 * day;
+    const windowRecords = snapshotRecords.filter(record => record.firstSeen >= windowStart && record.firstSeen <= updated);
+    const charts = hasSnapshot ? {
+      total: windowRecords.length,
+      window: dayFormat.format(windowStart) + ' – ' + dayFormat.format(updated) + ' (UTC)',
+      severity: Object.entries(severityLabels).map(([key, label]) =>
+        ({key, label, value: windowRecords.filter(record => record.severity === key).length})),
+      categories: [...Object.values(categories), 'Other technology']
+        .map(label => ({label, value: windowRecords.filter(record => record.category === label).length}))
+        .filter(category => category.value > 0)
+        .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
+    } : null;
     const topThreats = records.filter(record => record.related);
+    const recentThreats = fresh ? windowRecords.slice(0, 3) : [];
     const recentPriority = topThreats.filter(record => record.score >= 50 && within(record.firstSeen, updated, 7 * day));
     const exploited = new Map();
     for (const record of records) {
@@ -144,25 +163,28 @@ const executiveDashboard = (() => {
     const level = coverage === 'current' && hasRecentPriority ? 'Priority watch' : 'Not assessed';
     const observations = [];
     if (fresh) {
-      observations.push(kev.length
+      const exploitationSummary = kev.length
         ? count(kev.length, 'CVE') + ' in this collection ' + (kev.length === 1 ? 'has' : 'have') + ' confirmed exploitation. ' +
           (relatedKev.length ? count(relatedKev.length, 'CVE') + (relatedKev.length === 1 ? ' has' : ' have') +
             ' documented retail relevance.' : 'Retail relevance is unestablished in the collected evidence.')
-        : 'This snapshot has no confirmed-exploitation records with usable evidence.');
-      if (partial) observations.push('Source coverage is incomplete. Counts reflect records verified in this collection.');
+        : 'This snapshot has no confirmed-exploitation records with usable evidence.';
+      observations.push({text: exploitationSummary, source: 'CISA KEV', url: '#kev'});
+      if (partial) observations.push({text: 'Source coverage is incomplete. Counts reflect records verified in this collection.'});
     } else {
-      observations.push('Current vulnerability observations are unavailable.');
+      observations.push({text: 'Current vulnerability observations are unavailable.'});
     }
     if (incidents.length) {
       const topics = [...new Set(incidents.map(story => story.relevance.toLowerCase()))];
-      observations.push('Recent Retail Watch coverage includes ' + new Intl.ListFormat('en-GB').format(topics) + '.');
+      observations.push({text: 'Recent Retail Watch coverage includes ' + new Intl.ListFormat('en-GB').format(topics) + '.',
+        source: 'Retail Watch', url: '#retail-watch'});
     }
 
     const availableRecords = fresh ? count(topThreats.length, 'verified record') + ' with retail relevance and ' +
       count(kev.length, 'confirmed-exploited CVE') + ' in the monitored collection.' : '';
     const summary = fresh
       ? (partial ? 'Vulnerability coverage is incomplete. ' : '') + availableRecords
-      : (coverage === 'Stale' ? 'The vulnerability snapshot is stale. Current threat counts are withheld.'
+      : (coverage === 'Stale' ? 'The vulnerability snapshot is stale. Current threat counts are withheld. ' +
+          'Snapshot dated ' + time(collection.data_updated_at) + '.'
         : coverage === 'Failed' ? 'The latest collection failed. Current threat counts are unavailable.'
           : 'A current vulnerability collection could not be verified.');
     const feeds = Array.isArray(collection.feeds) ? collection.feeds.filter(feed => typeof feed?.name === 'string') : [];
@@ -184,22 +206,27 @@ const executiveDashboard = (() => {
       ...feeds.map(feed => [feed.name + ' last check',
         (feed.state === 'success' ? 'Succeeded' : feed.state === 'failed' ? 'Failed' : 'Unavailable') + ' · ' + time(feed.checked_at)]),
       ['Last successful collection', time(collection.last_success_at)],
-      ['Last validated briefing', briefingText]
+      ['Last validated briefing', briefingText],
+      ['AI validation', lastBriefing ? 'Last published briefing passed validation. See its freshness above.' : 'No validated briefing available'],
+      ['Data freshness', healthStatus + ' · ' + time(collection.data_updated_at)],
+      ['Collection limits', 'Vulnerability coverage is limited to monitored sources. Daily severity history is not published.']
     ];
     const total = value => fresh ? String(value) : 'Unavailable';
     const metrics = [
-      ['New priority threats', total(recentPriority.length), 'Retail-relevant, first seen in 7 days'],
-      ['New KEVs relevant to retail', total(newRelatedKev.length), 'CISA additions in 7 days'],
-      ['Active exploitation cases', total(kev.length), 'Unique confirmed-exploited CVEs in the collection'],
-      ['Retail incidents tracked', reviewed.length ? String(incidentCount) : 'Unavailable', 'Reviewed public incidents in 30 days'],
-      ['Actions to review this week', actions.length ? String(actions.length) : 'Unavailable', 'Reviews based on cited evidence'],
-      ['Feed health', healthStatus, 'Vulnerability collection']
+      ['New priority threats', total(recentPriority.length), 'Retail-relevant, first seen in 7 days', 'priority'],
+      ['New KEVs relevant to retail', total(newRelatedKev.length), 'CISA additions in 7 days', 'kev'],
+      ['Reported retail incidents', reviewed.length ? String(incidentCount) : 'Unavailable', 'Reviewed public incidents in 30 days', 'incidents'],
+      ['Confirmed active exploitation', total(kev.length), 'Unique CVEs in the collection', 'exploitation'],
+      ['Recommended actions', actions.length ? String(actions.length) : 'Unavailable', 'Evidence-linked reviews for this week', 'actions'],
+      ['Feed health', healthStatus, 'Vulnerability collection', 'coverage']
     ];
-    return {summary, level, confidence, updated: time(collection.data_updated_at), metrics, actions, health, observations,
+    return {summary, level, confidence, healthStatus, charts, metrics, actions, health, observations, recentThreats,
+      success: time(collection.last_success_at),
+      collectionStatus: {current: 'Complete', partial: 'Incomplete', failed: 'Failed'}[collection.state] || 'Unavailable',
       topThreats: topThreats.slice(0, 3), kev: (relatedKev.length ? relatedKev : kev).slice(0, 3),
       incidents: incidents.slice(0, 3), changes: compareSnapshots(items, previous, collection, coverage),
-      threatNote: !fresh ? 'Current threat ranking is unavailable.' : topThreats.length ? '' :
-        'No items with documented retail relevance in this collection.',
+      threatNote: !fresh ? 'Current threat ranking is unavailable.' : recentThreats.length ?
+        'First seen in 14 days, ranked by retail relevance and priority.' : 'No records first seen in this snapshot window.',
       kevNote: !fresh ? 'Current KEV coverage is unavailable.' : relatedKev.length ? 'Confirmed exploitation with documented retail relevance.' :
         kev.length ? 'Wider catalogue watch. Retail relevance is unestablished for these entries.' : 'No verified KEVs in this snapshot.',
       incidentNote: incidents.length ? 'Selected public incidents and developments from the past 30 days.'
@@ -228,11 +255,9 @@ const executiveDashboard = (() => {
       if (classes) node.className = classes;
       return node;
     };
-    const label = 'text-xs text-slate-600 dark:text-slate-300';
-    const copy = 'text-sm leading-relaxed text-slate-700 dark:text-slate-200';
-    const rowStyle = 'space-y-1.5 py-3 first:pt-1';
+    const label = 'executive-meta';
     const sourceLink = (text, url) => {
-      const link = el('a', text, 'text-xs font-medium text-sky-700 underline underline-offset-4 dark:text-sky-300');
+      const link = el('a', text, 'executive-link');
       link.href = url;
       if (url.startsWith('https://')) {
         link.target = '_blank';
@@ -240,57 +265,121 @@ const executiveDashboard = (() => {
       }
       return link;
     };
+    const svg = (tag, attributes) => {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+      return node;
+    };
 
     set('Summary', model.summary);
+    byId('Summary').dataset.state = model.healthStatus;
     set('Level', model.level);
     set('Confidence', model.confidence);
-    set('Updated', model.updated);
+    set('Freshness', model.healthStatus);
+    set('Collection', model.collectionStatus);
+    set('Success', model.success);
     set('ThreatsNote', model.threatNote);
     set('KevNote', model.kevNote);
     set('IncidentsNote', model.incidentNote);
     set('ActionsNote', model.actions.length ? '' : 'No current, evidence-linked actions are available.');
     set('Changes', model.changes);
-    renderList('Metrics', model.metrics, ([name, value, context]) => {
-      const card = el('div', '', 'min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/80');
-      card.append(el('dt', name, 'text-xs font-semibold'), el('dd', value,
-        /^\d+$/.test(value) ? 'my-1 font-mono text-2xl font-bold' : 'my-1 text-sm font-bold'),
-      el('dd', context, label));
+    renderList('Metrics', model.metrics, ([name, value, context, icon]) => {
+      const card = el('div', '', 'executive-kpi');
+      card.dataset.icon = icon;
+      const title = el('dt', name);
+      const symbol = el('span', metricIcons[icon], 'executive-kpi-icon');
+      symbol.setAttribute('aria-hidden', 'true');
+      title.prepend(symbol);
+      card.append(title, el('dd', value, /^\d+$/.test(value) ? 'executive-value executive-number' : 'executive-value'),
+        el('dd', context, label));
       return card;
     });
-    renderList('Threats', model.topThreats, item => {
-      const row = el('li', '', rowStyle);
-      const badge = el('span', 'Priority ' + item.score + '/100', item.score >= 50
-        ? 'rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-200'
-        : 'rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-950 dark:bg-sky-950 dark:text-sky-200');
-      row.append(el('h4', item.title, 'font-semibold'), badge,
-        el('p', [item.category, relevanceLabels[item.relevance], confidenceLabels[item.confidence]].filter(Boolean).join(' · '), label),
-        el('p', item.action, copy), sourceLink('Source: ' + item.source, item.url));
+    renderList('Threats', model.recentThreats, item => {
+      const row = el('li', '');
+      const badge = el('span', severityLabels[item.severity], 'executive-badge');
+      badge.dataset.severity = item.severity;
+      const metadata = el('p', '', label);
+      metadata.append(sourceLink(item.source, item.url), ' · ' + dayFormat.format(item.firstSeen) + ' (first seen)');
+      row.append(badge, el('h4', item.title), metadata,
+        el('p', ['Priority ' + item.score + '/100', item.category, relevanceLabels[item.relevance], confidenceLabels[item.confidence]]
+          .filter(Boolean).join(' · '), label));
       return row;
     });
     renderList('Kev', model.kev, item => {
-      const row = el('li', '', rowStyle);
-      row.append(el('h4', item.cve + ' · ' + (item.product || 'Product details unavailable'), 'font-semibold'),
+      const row = el('li', '');
+      row.append(el('h4', item.cve + ' · ' + (item.product || 'Product details unavailable')),
         el('p', 'Confirmed exploitation · ' + (relevanceLabels[item.relevance] || relevanceLabels.unestablished), label),
-        el('p', item.action, copy), sourceLink('Source: ' + item.source, item.url));
+        sourceLink(item.source, item.url));
       return row;
     });
     renderList('Incidents', model.incidents, item => {
-      const row = el('li', '', rowStyle);
-      row.append(el('p', dayFormat.format(item.date) + ' · ' + item.relevance, label),
-        el('h4', item.title, 'font-semibold'), el('p', item.summary, copy), sourceLink(item.source, item.url));
+      const row = el('li', '');
+      row.append(el('h4', item.title), el('p', dayFormat.format(item.date) + ' · ' + item.relevance, label),
+        sourceLink(item.source, item.url));
       return row;
     });
     renderList('Actions', model.actions, item => {
-      const row = el('li', '', 'space-y-0.5');
-      row.append(el('p', item.text, copy), sourceLink(item.source, item.url));
+      const row = el('li', '');
+      row.append(el('p', item.text), sourceLink(item.source, item.url));
       return row;
     });
-    renderList('Observations', model.observations, text => el('li', text));
+    const observationRows = [...model.observations, ...model.actions.slice(0, 1)];
+    renderList('Observations', observationRows, ({text, source, url}) => {
+      const row = el('li', text);
+      if (url) row.append(' ', sourceLink(source, url));
+      return row;
+    });
     renderList('Health', model.health, ([name, value]) => {
-      const row = el('li', '', 'flex flex-col gap-0.5');
-      row.append(el('strong', name, 'font-semibold text-slate-900 dark:text-slate-100'), el('span', value));
+      const row = el('div', '');
+      row.append(el('dt', name), el('dd', value));
       return row;
     });
+    const charts = model.charts;
+    const suffix = model.healthStatus === 'Current' ? '' : ' · ' + model.healthStatus + ' snapshot';
+    set('ChartWindow', charts ? charts.window + suffix : '14-day snapshot window');
+    const chartNote = !charts ? 'No validated snapshot available.' : 'No verified records first seen in this window' +
+      (suffix ? ' (' + suffix.slice(3).toLowerCase() + ').' : '.');
+    const severity = byId('Severity');
+    const categoriesPanel = byId('Categories');
+    if (!charts?.total) {
+      severity.replaceChildren(el('p', chartNote, label));
+      categoriesPanel.replaceChildren(el('p', chartNote, label));
+      return;
+    }
+    const donut = svg('svg', {viewBox: '0 0 80 80', 'aria-hidden': 'true'});
+    const circle = {'class': 'executive-ring', cx: 40, cy: 40, r: 33};
+    donut.append(svg('circle', circle));
+    const legend = el('ul', '', 'executive-legend');
+    legend.setAttribute('aria-label', 'Record counts by technical severity');
+    let offset = 0;
+    for (const {key, label: severityLabel, value} of charts.severity) {
+      const share = value * 100 / charts.total;
+      if (value) {
+        donut.append(svg('circle', {...circle, 'data-severity': key, pathLength: 100,
+          'stroke-dasharray': share + ' ' + (100 - share), 'stroke-dashoffset': -offset,
+          transform: 'rotate(-90 40 40)'}));
+        offset += share;
+      }
+      const row = el('li', '');
+      row.dataset.severity = key;
+      row.append(el('span', '', 'executive-dot'), el('span', severityLabel), el('strong', String(value)));
+      legend.append(row);
+    }
+    const donutTotal = svg('text', {x: 40, y: 45, 'font-size': 15});
+    donutTotal.textContent = charts.total;
+    donut.append(donutTotal);
+    severity.replaceChildren(donut, legend);
+    const bars = el('ul', '', 'executive-categories');
+    for (const {label: category, value} of charts.categories) {
+      const row = el('li', '', 'executive-category');
+      const bar = el('progress', '');
+      bar.max = charts.total;
+      bar.value = value;
+      bar.setAttribute('aria-hidden', 'true');
+      row.append(el('span', category), el('strong', String(value)), bar);
+      bars.append(row);
+    }
+    categoriesPanel.replaceChildren(...(suffix ? [el('p', suffix.slice(3), label), bars] : [bars]));
   }
 
   return {buildModel, newsFromRetailWatch, render};
