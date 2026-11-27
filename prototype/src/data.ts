@@ -6,6 +6,14 @@ export type Collection = {
   feeds?: { name: string; state: string }[]
 }
 
+export type AffectedVersion = {vendor: string; product: string; from: string; before?: string; through?: string}
+export type Vulnerability = {
+  id: string; evidence?: string; kev: boolean | null
+  cvss?: {score: number; version: string} | null
+  epss?: {probability: number; date: string} | null
+  remediation?: {affected_versions: AffectedVersion[]; vendor_advisories: string[]}
+}
+
 export type Threat = {
   id: string
   title: string
@@ -29,7 +37,7 @@ export type Threat = {
     relevance: string
     confidence: string
     exploitation: string
-    vulnerabilities: { id: string; kev: boolean; cvss?: {score: number; version: string}; epss?: {probability: number; date: string} }[]
+    vulnerabilities: Vulnerability[]
   }
 }
 

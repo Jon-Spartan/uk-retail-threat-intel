@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-BgQcWS4k.js', 'assets/index-iZXF-9D1.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-D6bNSjwg.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -313,6 +313,65 @@ test('themed tools and legacy links use canonical datasets without leaving the a
   for await (const chunk of stream) csv += chunk;
   assert.match(csv, /T1566/);
   assert.match(csv, /CVE-2026-10001/);
+  board.assertQuiet();
+});
+
+test('CVE detail shows dated evidence and the review queue keeps records and status private', async t => {
+  const date = hoursAgo(1);
+  const item = executiveKev('10001', date);
+  const advisory = 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-10001';
+  Object.assign(item.classification.vulnerabilities[0], {evidence: 'cve_list', cvss: {score: 9.8, version: '3.1'},
+    epss: {probability: 0.42, date: date.slice(0, 10)}, remediation: {
+      affected_versions: [{vendor: 'Fixture vendor', product: 'Fixture gateway', from: '1.2', before: '1.5'}],
+      vendor_advisories: [advisory]
+    }});
+  const board = await dashboard(t, {
+    'data/threats.json': [item],
+    'data/intelligence_status.json': {collection: collection('current')},
+    'data/official_updates.json': {stories: [{id: 'review-story', title: 'Queue story fixture',
+      source: 'ncsc', published_at: date, url: sourceUrl}]}
+  }, {pathSuffix: '', hash: '#/radar/' + item.id, legacy: false});
+  const {page, requests, responses} = board;
+  await page.getByText('Listed · confirmed exploitation', {exact: true}).waitFor();
+  await page.getByText(/42% · /).waitFor();
+  await page.getByText('9.8 / 10 · v3.1', {exact: true}).waitFor();
+  await page.getByText('1.2 up to but excluding 1.5', {exact: true}).waitFor();
+  assert.equal(await page.getByRole('link', {name: /Vendor advisory/}).getAttribute('href'), advisory);
+  const before = requests.length;
+  const navigate = hash => page.evaluate(next => {location.hash = next;}, hash);
+  const save = page.getByRole('button', {name: 'Save to review queue', exact: true});
+  await save.click();
+  await navigate('#/feed/review-story');
+  await page.getByRole('heading', {name: 'Queue story fixture', exact: true}).waitFor();
+  await save.click();
+  await navigate('#/retail/retail-0003');
+  await page.getByRole('heading', {name: 'Evidence timeline'}).waitFor();
+  await save.click();
+  await navigate('#/review');
+  const queue = page.getByRole('list').filter({has: page.getByRole('link', {name: 'Queue story fixture', exact: true})});
+  await queue.waitFor();
+  assert.equal(await queue.locator(':scope > li').count(), 3);
+  const status = title => queue.getByLabel('Review status for ' + title, {exact: true});
+  await status(item.title).selectOption('Reviewed');
+  await status('Queue story fixture').selectOption('Watch for updates');
+  const filter = page.getByLabel('Status filter');
+  await filter.selectOption('Reviewed');
+  assert.equal(await page.getByRole('link', {name: 'Queue story fixture', exact: true}).count(), 0);
+  await filter.selectOption('All statuses');
+  assert.equal(requests.length, before);
+  assert.equal(new URL(page.url()).hash, '#/review');
+
+  responses['data/threats.json'] = [];
+  await page.setViewportSize({width: 390, height: 844});
+  await page.reload();
+  const retained = queue.getByRole('listitem').filter({hasText: item.title});
+  await retained.getByText('Outside the available snapshot', {exact: true}).waitFor();
+  assert.equal(await retained.getByRole('link', {name: 'Original source'}).getAttribute('href'), item.url);
+  assert.equal(await status(item.title).inputValue(), 'Reviewed');
+  assert.equal(await status('Queue story fixture').inputValue(), 'Watch for updates');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await retained.getByRole('button', {name: 'Remove ' + item.title}).click();
+  await retained.waitFor({state: 'detached'});
   board.assertQuiet();
 });
 

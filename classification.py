@@ -94,6 +94,86 @@ def cna_products(cna):
     return products[:12]
 
 
+VENDOR_ADVISORY_PATHS = {
+    "msrc.microsoft.com": r"/update-guide/vulnerability/CVE-[0-9]{4}-[0-9]{4,}",
+    "sec.cloudapps.cisco.com": r"/security/center/content/CiscoSecurityAdvisory/cisco-sa-[a-zA-Z0-9_-]+/?",
+    "access.redhat.com": r"/security/cve/CVE-[0-9]{4}-[0-9]{4,}/?",
+    "www.fortiguard.com": r"/psirt/FG-IR-[0-9-]+/?",
+}
+
+
+def vendor_advisory_url(value, cve):
+    if not validated_http_url(value):
+        return None
+    parsed = urlsplit(value)
+    pattern = VENDOR_ADVISORY_PATHS.get(parsed.netloc)
+    if parsed.netloc in {"msrc.microsoft.com", "access.redhat.com"} and parsed.path.rstrip("/").split("/")[-1] != cve:
+        return None
+    return value if (parsed.scheme == "https" and pattern and not parsed.query and not parsed.fragment
+                     and re.fullmatch(pattern, parsed.path)) else None
+
+
+def version_token(value):
+    return (isinstance(value, str) and bool(re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._+~:-]{0,63}", value))
+            and value.lower() not in {"unknown", "unspecified", "none", "na"})
+
+
+def valid_affected_version(row):
+    if not isinstance(row, dict) or set(row) not in (
+        {"vendor", "product", "from"}, {"vendor", "product", "from", "before"}, {"vendor", "product", "from", "through"}
+    ):
+        return False
+    product = product_entry(row["vendor"], row["product"], "cve_list")
+    return (product is not None and product["vendor"] == row["vendor"] and product["product"] == row["product"]
+            and all(version_token(value) for key, value in row.items() if key not in ("vendor", "product")))
+
+
+def cna_remediation(cna, cve):
+    versions = []
+    affected = cna.get("affected")
+    for entry in affected[:100] if isinstance(affected, list) else []:
+        if not isinstance(entry, dict) or not isinstance(entry.get("versions"), list):
+            continue
+        product = product_entry(entry.get("vendor"), entry.get("product"), "cve_list")
+        if not product:
+            continue
+        for declared in entry["versions"][:100]:
+            if not isinstance(declared, dict) or declared.get("status") != "affected" or declared.get("changes"):
+                continue
+            row = {"vendor": product["vendor"], "product": product["product"], "from": declared.get("version")}
+            for field, target in (("lessThan", "before"), ("lessThanOrEqual", "through")):
+                if field in declared:
+                    row[target] = declared[field]
+            if valid_affected_version(row) and row not in versions:
+                versions.append(row)
+                if len(versions) == 12:
+                    break
+        if len(versions) == 12:
+            break
+    advisories = []
+    references = cna.get("references")
+    for reference in references[:100] if isinstance(references, list) else []:
+        if not isinstance(reference, dict) or not isinstance(reference.get("tags"), list):
+            continue
+        if "vendor-advisory" in reference["tags"]:
+            url = vendor_advisory_url(reference.get("url"), cve)
+            if url and url not in advisories:
+                advisories.append(url)
+                if len(advisories) == 4:
+                    break
+    return {"affected_versions": versions, "vendor_advisories": advisories} if versions or advisories else None
+
+
+def valid_remediation(value, cve):
+    if not isinstance(value, dict) or set(value) != {"affected_versions", "vendor_advisories"}:
+        return False
+    versions, advisories = value["affected_versions"], value["vendor_advisories"]
+    return (isinstance(versions, list) and len(versions) <= 12 and all(map(valid_affected_version, versions))
+            and isinstance(advisories, list) and len(advisories) <= 4
+            and all(vendor_advisory_url(url, cve) for url in advisories)
+            and bool(versions or advisories))
+
+
 def parse_cve_record(payload, cve):
     if (not isinstance(payload, dict) or payload.get("dataType") != "CVE_RECORD"
             or not isinstance(payload.get("dataVersion"), str)
@@ -115,6 +195,9 @@ def parse_cve_record(payload, cve):
     products = cna_products(cna)
     if products:
         result["affected_products"] = products
+    remediation = cna_remediation(cna, cve)
+    if remediation:
+        result["remediation"] = remediation
     # Prefer the primary CNA's base score. Third-party enrichment is not inferred as CNA evidence.
     metrics = cna.get("metrics")
     if isinstance(metrics, list):
@@ -237,6 +320,7 @@ def classify_record(record, kev_catalogue, cvss_records, epss, assessed_at):
         vulnerabilities.append({
             "id": cve, "evidence": "cve_list" if primary else "kev_catalogue",
             "kev": listed, "cvss": primary["cvss"] if primary else None, "epss": epss.get(cve),
+            **({"remediation": primary["remediation"]} if primary and primary.get("remediation") else {}),
         })
     if products:
         record["affected_products"] = products[:12]
@@ -298,10 +382,13 @@ def classification_is_valid(record):
     if not isinstance(catalogue, bool) or not isinstance(items, list) or len(items) > 100:
         return False
     for item in items:
-        if (not isinstance(item, dict) or set(item) != {"id", "evidence", "kev", "cvss", "epss"}
+        required_item = {"id", "evidence", "kev", "cvss", "epss"}
+        if (not isinstance(item, dict) or set(item) not in (required_item, required_item | {"remediation"})
                 or not production_cve(item["id"]) or item["evidence"] not in ("cve_list", "kev_catalogue")
                 or (not isinstance(item["kev"], bool) if catalogue else item["kev"] is not None)
-                or (item["evidence"] == "kev_catalogue" and (item["kev"] is not True or item["cvss"] is not None))):
+                or (item["evidence"] == "kev_catalogue" and (item["kev"] is not True or item["cvss"] is not None))
+                or ("remediation" in item and (item["evidence"] != "cve_list"
+                                               or not valid_remediation(item["remediation"], item["id"])))):
             return False
         cvss = item["cvss"]
         if cvss is not None and (not isinstance(cvss, dict) or set(cvss) != {"score", "version"}

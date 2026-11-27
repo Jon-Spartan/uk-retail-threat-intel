@@ -50,7 +50,7 @@ try {
   for (const [width, height] of [[1920, 1080], [1440, 900], [1280, 800], [390, 844]]) {
     const page = await pageAt(width, height)
     for (const [view, title] of [['overview', 'Executive Overview'], ['retail', 'Retail Intelligence'],
-      ['radar', 'Vulnerability Radar'], ['feed', 'Intelligence Feed']]) {
+      ['radar', 'Vulnerability Radar'], ['feed', 'Intelligence Feed'], ['review', 'Review Queue']]) {
       await page.goto(url + '?review=' + view + '#/' + view, {waitUntil: 'networkidle'})
       await page.getByRole('heading', {name: title, exact: true}).waitFor()
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, view + ' has page overflow')
@@ -64,7 +64,7 @@ try {
       if (width === 1440) await audit(page, view + ' dark')
     }
     await page.close()
-    console.log('Captured four views at', width + 'x' + height)
+    console.log('Captured five views at', width + 'x' + height)
   }
 
   const desktop = await pageAt(1440, 900)
@@ -81,6 +81,10 @@ try {
     await desktop.reload({waitUntil: 'networkidle'})
     await desktop.getByRole('link', {name: 'Open CISA catalogue entry'}).waitFor()
     assert.equal(new URL(desktop.url()).hash, detail)
+    await audit(desktop, 'CVE evidence dark')
+    await desktop.screenshot({path: 'review/cve-evidence-1440x900.png', animations: 'disabled'})
+    await desktop.getByRole('button', {name: 'Save to review queue'}).click()
+    await desktop.getByRole('combobox', {name: /Review status for/}).waitFor()
     await desktop.getByRole('link', {name: 'Close detail'}).click()
     await desktop.waitForURL(address => address.hash === '#/radar')
     await desktop.waitForFunction(() => document.activeElement?.tagName === 'H1')
@@ -110,7 +114,7 @@ try {
   await desktop.getByRole('button', {name: 'Switch to light theme'}).click()
   await audit(desktop, 'radar light')
   for (const [route, title] of [['mitre', 'MITRE ATT&CK'], ['briefings', 'Intelligence Briefings'], ['stack', 'My Stack'],
-    ['health', 'Service Health & Exports']]) {
+    ['health', 'Service Health & Exports'], ['review', 'Review Queue']]) {
     await desktop.goto(url + '#/' + route)
     await desktop.getByRole('heading', {name: title, exact: true}).waitFor()
     assert.equal(await desktop.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)

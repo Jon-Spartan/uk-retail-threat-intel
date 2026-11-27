@@ -5,6 +5,7 @@ const icons: Record<string, string> = {
   shield: 'M12 22s7-4 7-11V5l-7-3-7 3v6c0 7 7 11 7 11Z M9 12l2 2 4-4',
   overview: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
   feed: 'M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h4',
+  bookmark: 'M6 4h12v16l-6-4-6 4Z',
   radar: 'M12 22a10 10 0 1 1 10-10 M8 18a7 7 0 0 1 10-10 M12 16a4 4 0 0 1 4-4 M12 12l9-9',
   retail: 'M4 9h16v12H4z M3 9l2-6h14l2 6 M9 21v-7h6v7',
   search: 'M16 16l5 5 M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z',

@@ -6,6 +6,7 @@ import {Executive, Radar, Retail} from './views'
 import {Feed, feedSources} from './feed'
 import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
 import {cyberWatch, Roundup} from './editorial'
+import {ReviewQueueProvider, ReviewQueueView} from './reviewQueue'
 import {Icon, State} from './ui'
 import './style.css'
 
@@ -17,6 +18,7 @@ const views = {
   mitre: {title: 'MITRE ATT&CK', description: 'Explore techniques explicitly cited in public records.', icon: 'radar', group: 'Explore'},
   briefings: {title: 'Intelligence Briefings', description: 'Read published analysis with traceable evidence.', icon: 'feed', group: 'Overview'},
   stack: {title: 'My Stack', description: 'Match public evidence against technology preferences saved in this browser.', icon: 'retail', group: 'Workspace'},
+  review: {title: 'Review Queue', description: 'Organise saved vulnerabilities, stories and retail records.', icon: 'bookmark', group: 'Workspace'},
   health: {title: 'Service Health & Exports', description: 'Check source coverage, validation and public data exports.', icon: 'clock', group: 'Workspace'},
   roundup: {title: 'Editorial Roundup', description: 'Reviewed public reporting and defensive lessons.', icon: 'feed', group: 'Overview'}
 } as const
@@ -178,6 +180,7 @@ function App() {
         {current.view === 'briefings' && <Briefings snapshot={snapshot} period={current.id === 'weekly' ? 'weekly' : 'daily'}/>}
         {current.view === 'roundup' && <Roundup/>}
         {current.view === 'stack' && <MyStack snapshot={snapshot} stack={stack} update={updateStack}/>}
+        {current.view === 'review' && <ReviewQueueView snapshot={snapshot}/>}
         {current.view === 'health' && <Health snapshot={snapshot} refresh={() => setRefreshVersion(value => value + 1)}/>}
       </main>
     </div>
@@ -190,4 +193,4 @@ function App() {
   </div>
 }
 
-createRoot(document.getElementById('root')!).render(<App/>)
+createRoot(document.getElementById('root')!).render(<ReviewQueueProvider><App/></ReviewQueueProvider>)

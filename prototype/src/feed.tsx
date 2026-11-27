@@ -3,6 +3,7 @@ import {recordHref, safeUrl, showDate} from './data'
 import type {Snapshot, Story} from './data'
 import {cyberWatch} from './editorial'
 import {Empty, Icon, State} from './ui'
+import {SaveForReview} from './reviewQueue'
 
 export const feedSources = ['All sources', 'Official', 'Press', 'Research', 'Cyber watch'] as const
 type FeedSource = typeof feedSources[number]
@@ -40,6 +41,7 @@ function ReadingPane({story, reports, source}: {story: Story; reports: Story[]; 
       <h2 id="feed-reader-title">{story.title}</h2>
       <p className="feed-reader-byline"><span>{story.source}</span><span aria-hidden="true">·</span>
         <time dateTime={story.date}>{showDate(story.date)}</time></p>
+      <SaveForReview item={{kind: 'feed', id: story.id, title: story.title, url: story.url}}/>
     </header>
     {(story.summary || story.lesson) && <section className="feed-context" aria-label="Editorial context">
       {story.summary && <div><h3>Summary</h3><p>{story.summary}</p></div>}

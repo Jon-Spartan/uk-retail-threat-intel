@@ -19,6 +19,8 @@ The total is the sum of the eight factors. Missing data contributes zero points 
 
 Start here uses the existing score after ordering records by declared product matches and newness since the previous browser visit. Product names come from the CISA catalogue and entries in the primary CVE record that declare an affected version or default status. A product match identifies a version-checking lead.
 
+Vulnerability Radar shows affected versions only when the primary CVE Numbering Authority record explicitly declares a supported exact version or bounded range. Ranges with status changes or open bounds are omitted. Vendor advisory links must be tagged by the primary record and match an approved first-party HTTPS path. The dashboard labels missing version evidence as unavailable. The linked vendor guidance is the reference for exceptions, applicability and fixes.
+
 ## Evidence and coverage
 
 The editorial retail register uses evidence-backed categories and business functions. A category can apply to more than one function. The archive tracks research and incidents from reviewed public reports, retaining unknown details. First-party disclosure and attributed reporting describe provenance. Editorial records have no numerical priority unless a separate documented methodology supports one.

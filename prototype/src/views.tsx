@@ -4,6 +4,8 @@ import type {Snapshot, Threat} from './data'
 import {Bars, Empty, External, Icon, Metric, Panel, State} from './ui'
 import {downloadRadar, stackMatch} from './tools'
 import {Activity, Trend} from './activity'
+import {CveEvidence} from './cveEvidence'
+import {SaveForReview} from './reviewQueue'
 const titleCase = (value: string) => Object.hasOwn(publicLabels, value)
   ? publicLabels[value] : value.replaceAll('_', ' ').replace(/^./, first => first.toUpperCase())
 const matches = (text: string, query: string) => text.toLowerCase().includes(query.toLowerCase().trim())
@@ -69,24 +71,25 @@ export function Radar({snapshot, selected, initialSeverity, technique, stack}: {
   const [topic, setTopic] = useState('')
   const state = collectionState(snapshot)
   const coverage = state === 'Current' || state === 'Incomplete'
+  const filters = new URLSearchParams()
+  if (initialSeverity) filters.set('severity', initialSeverity.toLowerCase())
+  if (technique) filters.set('technique', technique)
+  const suffix = filters.size ? '?' + filters.toString() : ''
   const rows = (snapshot?.threats || []).filter(row =>
     (!initialSeverity || severity(row) === initialSeverity) && (!technique || citedTechniques(row).includes(technique)) &&
     (!kevOnly || row.classification?.vulnerabilities.some(cve => cve.kev)) && (!matchOnly || stackMatch(row, stack)) &&
     (!topic || (topic === 'retail' ? ['uk_direct', 'sector'].includes(row.classification?.relevance || '') :
       topic === 'regulatory' ? /\b(?:ico|pci(?:\s+dss)?|gdpr|data protection|payment card)\b/i.test([row.title, row.summary, row.advisory].join(' ')) :
         /\b(?:black friday|cyber monday|christmas|fraud|phishing|delivery scam|returns|checkout)\b/i.test([row.title, row.summary, row.advisory].join(' ')))) &&
-    matches(row.title + ' ' + cves(row) + ' ' + citedTechniques(row).join(' '), query))
+    matches([row.title, cves(row), ...citedTechniques(row), ...(Array.isArray(row.affected_products) ?
+      row.affected_products.flatMap(product => [product?.vendor, product?.product]) : [])].join(' '), query))
     .sort((a, b) => (ascending ? 1 : -1) * ((a.classification?.score ?? -1) - (b.classification?.score ?? -1)) || a.id.localeCompare(b.id))
   const hit = snapshot?.threats?.find(row => row.id === selected)
   return <>
     <div className="notice"><State>{state}</State><span>Collection date · {showDate(snapshot?.collection?.data_updated_at, true)} UK time</span></div>
-    {hit && <Panel title={hit.title} detail="Public vulnerability evidence" trailing={<a href="#/radar" className="text-link">Close detail</a>}>
-      <dl className="assurance"><div><dt>Verified CVEs</dt><dd>{cves(hit)}</dd></div>
-      <div><dt>Evidence confidence</dt><dd>{titleCase(hit.classification?.confidence || 'unassessed')}</dd></div>
-      <div><dt>Technical severity</dt><dd>{titleCase(severity(hit).toLowerCase())}</dd></div></dl>
-      {stackMatch(hit, stack) && <p className="muted">{stackMatch(hit, stack)} · Check published applicability before acting.</p>}
-      <External url={hit.url}>Open CISA catalogue entry</External>
-    </Panel>}
+    {hit && <CveEvidence record={hit} closeHref={'#/radar' + suffix} collection={state} match={stackMatch(hit, stack)}
+      relevance={titleCase(hit.classification?.relevance || 'unestablished')}
+      confidence={titleCase(hit.classification?.confidence || 'unassessed')}/>}
     {selected && !hit && <div className="notice"><span>Vulnerability record is unavailable in this snapshot.</span> <a href="#/radar">Return to the radar</a></div>}
     <Panel title="Vulnerability catalogue" detail="Compare technical severity, exploitation evidence and sector relevance."
       trailing={<button className="button" type="button" disabled={!rows.length} onClick={() => downloadRadar(rows)}>Export CSV</button>}>
@@ -116,7 +119,7 @@ export function Radar({snapshot, selected, initialSeverity, technique, stack}: {
           <button className="sort-button" type="button" onClick={() => setAscending(value => !value)}>Priority {ascending ? '↑' : '↓'}</button>
         </th><th scope="col">Exploitation</th><th scope="col">Retail relevance</th><th scope="col">Source date</th></tr></thead>
         <tbody>{rows.map(row => <tr key={row.id}>
-          <th scope="row"><a href={recordHref('radar', row.id)}>{row.title.replace(/^CISA KEV addition: /i, '')}</a>
+          <th scope="row"><a href={recordHref('radar', row.id) + suffix}>{row.title.replace(/^CISA KEV addition: /i, '')}</a>
             {stackMatch(row, stack) && <small className="row-note">{stackMatch(row, stack)}</small>}
             {!coverage && row.carried_forward && <small className="row-note">Carried forward</small>}</th>
           <td><span className="severity" data-tone={severity(row).toLowerCase()}>{titleCase(severity(row).toLowerCase())}</span></td>
@@ -163,6 +166,7 @@ export function Retail({snapshot, selected}: {snapshot: Snapshot | null; selecte
     </div>
     {focus && <Panel title={focus.title} detail={titleCase(focus.confidence) + ' · ' + titleCase(focus.relevance)}
       trailing={<a className="text-link" href="#/retail">Close detail</a>}>
+      <SaveForReview item={{kind: 'retail', id: focus.id, title: focus.title, url: focus.timeline[0].url}}/>
       <dl className="assurance">
         <div><dt>Organisation</dt><dd>{focus.organisation}</dd></div><div><dt>Geography</dt><dd>{focus.geography || 'Unknown'}</dd></div>
         <div><dt>Initial access</dt><dd>{focus.initial_access || 'Unknown'}</dd></div>

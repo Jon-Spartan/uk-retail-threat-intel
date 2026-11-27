@@ -98,6 +98,42 @@ class ClassificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid affected product evidence"):
             validate_records([record])
 
+    def test_remediation_retains_explicit_cna_ranges_and_matching_vendor_advisories(self):
+        advisory = f"https://msrc.microsoft.com/update-guide/vulnerability/{A}"
+        product = {"vendor": "Example Vendor", "product": "Gateway"}
+        payload = {"dataType": "CVE_RECORD", "dataVersion": "5.2",
+                   "cveMetadata": {"cveId": A, "state": "PUBLISHED"}, "containers": {"cna": {
+                       "affected": [{**product, "versions": [
+                           {"version": "1.0", "status": "affected", "lessThan": "1.5"},
+                           {"version": "2.0", "status": "affected", "lessThanOrEqual": "2.3"},
+                           {"version": "3.0", "status": "affected"},
+                           {"version": "4.0", "status": "affected", "lessThan": "*"},
+                           {"version": "5.0", "status": "affected", "lessThan": "6.0",
+                            "changes": [{"at": "5.5", "status": "unaffected"}]},
+                           {"version": "7.0", "status": "unaffected"},
+                       ]}],
+                       "references": [
+                           {"url": advisory, "tags": ["vendor-advisory"]},
+                           {"url": advisory.replace(A, B), "tags": ["vendor-advisory"]},
+                           {"url": advisory.replace(".com/", ".com.example.invalid/"), "tags": ["vendor-advisory"]},
+                           {"url": advisory + "?bad=1", "tags": ["vendor-advisory"]},
+                           {"url": f"https://access.redhat.com/security/cve/{A}", "tags": ["technical-description"]},
+                       ],
+                   }}}
+        primary = parse_cve_record(payload, A)
+        expected = {"affected_versions": [{**product, "from": "1.0", "before": "1.5"},
+                                          {**product, "from": "2.0", "through": "2.3"},
+                                          {**product, "from": "3.0"}],
+                    "vendor_advisories": [advisory]}
+        self.assertEqual(primary["remediation"], expected)
+        record = classify_record(article(), {A}, {A: primary}, {}, NOW)
+        vulnerability = record["classification"]["vulnerabilities"][0]
+        self.assertEqual(vulnerability["remediation"], expected)
+        validate_records([record])
+        vulnerability["remediation"]["vendor_advisories"] = [advisory.replace(A, B)]
+        with self.assertRaisesRegex(ValueError, "Classification does not match its evidence"):
+            validate_records([record])
+
     def test_epss_staleness_per_cve_and_conflicts(self):
         day = NOW.date()
         rows = [
