@@ -70,6 +70,13 @@ try {
   const desktop = await pageAt(1440, 900)
   await desktop.goto(url + '#kev', {waitUntil: 'networkidle'})
   await desktop.getByRole('heading', {name: 'Vulnerability Radar', exact: true}).waitFor()
+  await desktop.evaluate(() => document.fonts.ready)
+  assert.equal(await desktop.locator('.sidebar .brand strong').evaluate(title => {
+    const text = document.createRange()
+    text.selectNodeContents(title)
+    const sidebar = title.closest('.sidebar').getBoundingClientRect()
+    return [...text.getClientRects()].every(rect => rect.left >= sidebar.left && rect.right <= sidebar.right)
+  }), true, 'The sidebar title should fit within the rail')
   const sort = desktop.getByRole('button', {name: /^Priority/})
   if (await sort.count()) {
     await sort.click()
