@@ -10,9 +10,14 @@ const files = [
   ['data/intelligence_status.json', 'data/intelligence_status.json'],
   ['data/press_updates.json', 'data/press_updates.json', true],
   ['data/official_updates.json', 'data/official_updates.json', true],
+  ['data/flash_alert.json', 'data/flash_alert.json', true],
+  ['data/daily_briefing.json', 'data/daily_briefing.json', true],
+  ['data/daily_summary.md', 'data/daily_summary.md', true],
+  ['data/weekly_briefing.json', 'data/weekly_briefing.json', true],
+  ['data/weekly_summary.md', 'data/weekly_summary.md', true],
   ['assets/retail-intelligence.json', 'assets/retail-intelligence.json'],
-  ['assets/inter.woff2', 'fonts/inter.woff2'], ['assets/inter-OFL.txt', 'fonts/inter-OFL.txt'],
-  ['assets/jetbrains-mono.woff2', 'fonts/jetbrains-mono.woff2'], ['assets/jetbrains-mono-OFL.txt', 'fonts/jetbrains-mono-OFL.txt']
+  ['fonts/inter.woff2', 'fonts/inter.woff2'], ['fonts/inter-OFL.txt', 'fonts/inter-OFL.txt'],
+  ['fonts/jetbrains-mono.woff2', 'fonts/jetbrains-mono.woff2'], ['fonts/jetbrains-mono-OFL.txt', 'fonts/jetbrains-mono-OFL.txt']
 ]
 for (const [source, name, optional] of files) {
   const output = join(root, 'public', name)

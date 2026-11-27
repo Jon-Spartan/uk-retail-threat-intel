@@ -1,8 +1,10 @@
 import {useEffect, useRef, useState} from 'react'
 import {createRoot} from 'react-dom/client'
-import {bandOrder, collectionState, hostedPreview, loadSnapshot} from './data'
+import {bandOrder, collectionState, hostedPreview, loadSnapshot, recordHref} from './data'
 import type {Snapshot} from './data'
-import {Executive, Feed, Radar, Retail, recordHref} from './views'
+import {Executive, Feed, Radar, Retail} from './views'
+import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
+import {cyberWatch, Roundup} from './editorial'
 import {Icon, State} from './ui'
 import './style.css'
 
@@ -10,31 +12,42 @@ const views = {
   overview: {title: 'Executive Overview', description: 'Monitor the public UK retail cyber threat landscape.', icon: 'overview', group: 'Overview'},
   feed: {title: 'Intelligence Feed', description: 'Find security reporting and verify it against the original sources.', icon: 'feed', group: 'Explore'},
   radar: {title: 'Vulnerability Radar', description: 'Investigate public CVEs and compare documented evidence.', icon: 'radar', group: 'Explore'},
-  retail: {title: 'Retail Intelligence', description: 'Explore reviewed incidents and guidance relevant to retail.', icon: 'retail', group: 'Retail sector'}
+  retail: {title: 'Retail Intelligence', description: 'Explore reviewed incidents and guidance relevant to retail.', icon: 'retail', group: 'Retail sector'},
+  mitre: {title: 'MITRE ATT&CK', description: 'Explore techniques explicitly cited in public records.', icon: 'radar', group: 'Explore'},
+  briefings: {title: 'Intelligence Briefings', description: 'Read published analysis with traceable evidence.', icon: 'feed', group: 'Overview'},
+  stack: {title: 'My Stack', description: 'Match public evidence against technology preferences saved in this browser.', icon: 'retail', group: 'Workspace'},
+  health: {title: 'Service Health & Exports', description: 'Check source coverage, validation and public data exports.', icon: 'clock', group: 'Workspace'},
+  roundup: {title: 'Editorial Roundup', description: 'Reviewed public reporting and defensive lessons.', icon: 'feed', group: 'Overview'}
 } as const
 type View = keyof typeof views
-const aliases: Record<string, View> = {
-  executive: 'overview', kev: 'radar', 'live-intelligence': 'radar', 'start-here': 'radar',
-  stories: 'feed', 'press-updates': 'feed', 'official-updates': 'feed', 'cyber-watch': 'feed', 'weekly-roundup': 'feed',
-  retail: 'retail', 'retail-watch': 'retail'
+const aliases: Record<string, string> = {
+  executive: '/overview', kev: '/radar', 'live-intelligence': '/radar', 'start-here': '/radar',
+  stories: '/feed', 'press-updates': '/feed?source=Press', 'official-updates': '/feed?source=Official',
+  'cyber-watch': '/feed?source=Cyber+watch', 'weekly-roundup': '/roundup',
+  retail: '/retail', 'retail-watch': '/retail', tabMitreContent: '/mitre', tabAutomationContent: '/health'
 }
-const classicAnchors = new Set(['tabMitreContent', 'tabAutomationContent', 'start-here', 'live-intelligence',
-  'press-updates', 'official-updates', 'retail-watch', 'cyber-watch', 'weekly-roundup'])
 
 function route() {
   const fragment = location.hash.slice(1)
-  if (Object.hasOwn(aliases, fragment)) return {view: aliases[fragment], severity: '', valid: true}
-  if (!fragment) return {view: 'overview' as View, severity: '', valid: true}
-  const [raw, query] = fragment.split('?')
-  const path = raw.match(/^\/(overview|feed|radar|retail)(?:\/([a-z0-9_-]{1,90}))?$/)
-  const band = new URLSearchParams(query).get('severity')?.toUpperCase() || ''
-  return {view: (path?.[1] || 'overview') as View, id: path?.[2], severity: bandOrder.includes(band) ? band : '', valid: Boolean(path)}
+  const legacyStory = cyberWatch.find(story => story.id === fragment)
+  const normalized = !fragment ? '/overview' : legacyStory ? '/feed/' + legacyStory.id :
+    Object.hasOwn(aliases, fragment) ? aliases[fragment] : fragment
+  const [raw, query] = normalized.split('?')
+  const path = raw.match(/^\/([a-z]+)(?:\/([a-z0-9_-]{1,90}))?$/)
+  const valid = Boolean(path && Object.hasOwn(views, path[1]))
+  const params = new URLSearchParams(query)
+  const band = params.get('severity')?.toUpperCase() || ''
+  const technique = params.get('technique') || ''
+  const source = params.get('source') || ''
+  return {view: (valid ? path![1] : 'overview') as View, id: path?.[2], severity: bandOrder.includes(band) ? band : '',
+    technique: /^T\d{4}(?:\.\d{3})?$/.test(technique) ? technique : '',
+    source: ['Press', 'Official', 'Cyber watch', 'Research'].includes(source) ? source : 'All sources', valid}
 }
 
 function Navigation({view, onNavigate}: {view: View; onNavigate?: () => void}) {
   return <nav className="navigation" aria-label="Intelligence views">
-    {(['Overview', 'Explore', 'Retail sector'] as const).map(group => <div key={group} className="nav-group">
-      <p>{group}</p>{(Object.keys(views) as View[]).filter(key => views[key].group === group).map(key =>
+    {(['Overview', 'Explore', 'Retail sector', 'Workspace'] as const).map(group => <div key={group} className="nav-group">
+      <p>{group}</p>{(Object.keys(views) as View[]).filter(key => key !== 'roundup' && views[key].group === group).map(key =>
         <a key={key} href={'#/' + key} aria-current={key === view ? 'page' : undefined} onClick={onNavigate}>
           <Icon name={views[key].icon}/><span>{views[key].title}</span>
         </a>)}</div>)}
@@ -53,7 +66,7 @@ function SearchDialog({dialog, snapshot}: {dialog: React.RefObject<HTMLDialogEle
     ...(snapshot?.threats || []).map(row => ({id: row.id, title: row.title, view: 'radar',
       keywords: row.classification?.vulnerabilities.map(cve => cve.id).join(' ') || ''})),
     ...(snapshot?.retail?.records || []).map(row => ({id: row.id, title: row.title, view: 'retail', keywords: row.organisation})),
-    ...(snapshot?.stories || []).map(row => ({id: row.id, title: row.title, view: 'feed', keywords: row.source}))
+    ...(snapshot?.stories || []).concat(cyberWatch).map(row => ({id: row.id, title: row.title, view: 'feed', keywords: row.source}))
   ]
   const results = needle.length >= 2 ? entries.filter(row => (row.title + ' ' + row.keywords).toLowerCase().includes(needle)).slice(0, 12) : []
   return <dialog ref={dialog} className="surface-dialog" aria-labelledby="global-search-title" onKeyDown={event => {
@@ -76,9 +89,11 @@ function SearchDialog({dialog, snapshot}: {dialog: React.RefObject<HTMLDialogEle
 function App() {
   const [current, setCurrent] = useState(route)
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [refreshVersion, setRefreshVersion] = useState(0)
+  const {stack, update: updateStack} = useMyStack()
   const [collapsed, setCollapsed] = useState(false)
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('cti_prototype_theme') === 'light' ? 'light' : 'dark' }
+    try { return (localStorage.getItem('cti_prototype_theme') ?? localStorage.getItem('theme')) === 'light' ? 'light' : 'dark' }
     catch { return 'dark' }
   })
   const main = useRef<HTMLElement>(null)
@@ -102,24 +117,18 @@ function App() {
     }
     void refresh()
     const timer = hostedPreview ? window.setInterval(refresh, 60_000) : undefined
+    return () => {active = false; window.clearInterval(timer)}
+  }, [refreshVersion])
+  useEffect(() => {
     const update = () => {
-      if (hostedPreview && classicAnchors.has(location.hash.slice(1))) {
-        location.replace('./classic.html' + location.hash)
-        return
-      }
       setCurrent(previous => {
         const next = route()
         shouldFocus.current = previous.view !== next.view || previous.id !== next.id
         return next
       })
     }
-    if (hostedPreview && classicAnchors.has(location.hash.slice(1))) update()
     window.addEventListener('hashchange', update)
-    return () => {
-      active = false
-      window.clearInterval(timer)
-      window.removeEventListener('hashchange', update)
-    }
+    return () => window.removeEventListener('hashchange', update)
   }, [])
   useEffect(() => {
     document.title = views[current.view].title + ' · UK Retail CTI'
@@ -157,14 +166,18 @@ function App() {
       </header>
       <main id="main-content" tabIndex={-1} ref={main} className="page">
         <div className="page-heading"><div><h1 tabIndex={-1} ref={heading}>{view.title}</h1><p>{view.description}</p></div>
-          {hostedPreview ? <a className="text-link" href="./classic.html">More tools <Icon name="arrow" size={15}/></a> :
-            <span className="prototype-label">Local prototype</span>}</div>
-        {hostedPreview && <p className="notice">Find alerts, briefings, exports and My Stack under More tools.</p>}
+          {!hostedPreview && <span className="prototype-label">Local prototype</span>}</div>
+        <Flash snapshot={snapshot}/>
         {!current.valid && <div className="notice">This route is unavailable in the prototype. Choose a view in the navigation.</div>}
         {current.view === 'overview' && <Executive snapshot={snapshot}/>}
         {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
-        {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity}/>}
-        {current.view === 'feed' && <Feed snapshot={snapshot} selected={current.id}/>}
+        {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}
+        {current.view === 'feed' && <Feed key={current.source} snapshot={snapshot} selected={current.id} initialSource={current.source}/>}
+        {current.view === 'mitre' && <Mitre snapshot={snapshot}/>}
+        {current.view === 'briefings' && <Briefings snapshot={snapshot} period={current.id === 'weekly' ? 'weekly' : 'daily'}/>}
+        {current.view === 'roundup' && <Roundup/>}
+        {current.view === 'stack' && <MyStack snapshot={snapshot} stack={stack} update={updateStack}/>}
+        {current.view === 'health' && <Health snapshot={snapshot} refresh={() => setRefreshVersion(value => value + 1)}/>}
       </main>
     </div>
     <SearchDialog dialog={search} snapshot={snapshot}/>

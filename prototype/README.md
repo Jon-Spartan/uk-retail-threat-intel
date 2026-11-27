@@ -27,7 +27,7 @@ The review script serves the built bundle at the GitHub Pages repository base pa
 ## Decisions and limits
 
 - The isolated lockfile uses React and React DOM for UI, Vite and TypeScript for building, Playwright and axe-core for tests. React and Vite use MIT, TypeScript uses Apache-2.0, Playwright uses Apache-2.0, and axe-core tooling uses MPL-2.0. The locally staged fonts retain their SIL Open Font Licence notices. Production adoption requires a release-specific dependency, licence and bundle review.
-- The local prototype loads its snapshot once. The hosted build checks the canonical public assets every minute. Briefings, flash alerts, exports and My Stack are available under More tools. The new layout stores its own light/dark theme separately.
+- The local prototype loads its staged snapshot once. The hosted build checks the canonical public assets every minute. Flash alerts and dismissal, validated daily and weekly briefings, public exports, the MITRE matrix and browser-local My Stack are part of the themed app. The new layout imports the older theme preference on first use and retains the existing My Stack and session-dismissal keys.
 - Dates, editorial review, source attribution and collection states remain visible. There is no published daily trend series. Headlines use the approved title, date and links with primary disclosures shown where available.
 - The fragment router demonstrates direct record links, legacy aliases for the representative views and one shareable severity filter. The full route inventory and legacy link migration are release work.
 - Automated accessibility results cover the reviewed browser scenarios. Manual screen-reader, zoom and release-level WCAG review remain outstanding.
@@ -35,4 +35,4 @@ The review script serves the built bundle at the GitHub Pages repository base pa
 
 ## Hosted build
 
-Use the same validated seed and locked install as above. Run `pnpm run build --mode hosted` and `node hosted.mjs copy`. Update the two content-hashed entries in the Python publication manifest and browser fixture allowlist when their names change. Include only the listed HTML, JS, CSS and licence artifacts from `redesign/`. Site staging reuses the allowlisted public fonts and stages a single canonical dataset. The original page is staged as `classic.html`. CI verifies the hosted build byte for byte.
+Use the same validated seed and locked install as above. Run `pnpm run build --mode hosted` and `node hosted.mjs copy`. Update the two content-hashed entries in the Python publication manifest and browser fixture allowlist when their names change. Include only the listed HTML, JS, CSS and licence artifacts from `redesign/`. Site staging reuses the allowlisted public fonts and stages a single canonical dataset. The historic `classic.html` URL resolves to the themed app for saved links. CI verifies the hosted build byte for byte.

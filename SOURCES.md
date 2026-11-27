@@ -39,7 +39,7 @@ The Retail Centre, Retail Watch and Executive read the same [editorial register]
 
 ## Cyber watch
 
-Cyber watch applies the same editorial method as Retail watch to significant stories beyond retail. The first notes were drafted with AI assistance and checked against the sources below. Takeaways are editorial suggestions. These stories remain separate from the automated CISA feed and its exports.
+Cyber watch applies the same editorial method as Retail watch to significant stories beyond retail. The first notes were drafted with AI assistance and checked against the sources below. Takeaways are editorial suggestions. The reviewed records appear in the Intelligence Feed and stay separate from the automated CISA feed and its exports.
 
 - **FinCEN filing disruption.** The Register reported on the incident on 25 November 2026. The original FinCEN order specifies who qualifies for the deadline changes. [The Register’s reporting](https://www.theregister.com/security/2026/11/25/us-treasury-financial-crimes-unit-becomes-latest-fed-breach-victim/5312165) · [FinCEN order (PDF)](https://www.fincen.gov/sites/default/files/100/ORDER-FIN-2026-R002.pdf)
 - **EU Academy data leak.** The European Commission confirmed the platform impact at its 23 November 2026 briefing and said on 25 November that its investigation continued. [Commission briefing](https://audiovisual.ec.europa.eu/en/media/video/I-298395) · [Follow-up](https://audiovisual.ec.europa.eu/en/media/video/I-298552)
@@ -47,7 +47,7 @@ Cyber watch applies the same editorial method as Retail watch to significant sto
 
 ## Weekly roundup and follow-ups
 
-The first weekly edition covers 19–25 November 2026. It links to the original NCSC advisory, vendor disclosure and ICO reporting guide. The edition and story follow-ups are edited in the dashboard HTML, with visible dates and source links. AI-assisted notes are checked against the cited sources, and suggested actions are labelled separately.
+The first weekly edition covers 19–25 November 2026. It links to the original NCSC advisory, vendor disclosure and ICO reporting guide. The edition appears under Intelligence Briefings with visible dates and source links. AI-assisted notes are checked against the cited sources, and suggested actions are labelled separately.
 
 - [NCSC advice on the rise in AI-assisted attacks, 24 November](https://www.ncsc.gov.uk/blogs/familiar-weaknesses-exploited-faster-defending-against-agentic-cyber-attacks)
 - [ICO personal data breach guide](https://ico.org.uk/for-organisations/report-a-breach/personal-data-breach/personal-data-breaches-a-guide/)

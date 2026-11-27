@@ -1,9 +1,9 @@
 import {useState} from 'react'
-import {bandOrder, collectionState, lastThirty, publicLabels, retailStale, severity, showDate} from './data'
+import {bandOrder, citedTechniques, collectionState, lastThirty, publicLabels, recordHref, retailStale, severity, showDate} from './data'
 import type {Snapshot, Story, Threat} from './data'
 import {Bars, Empty, External, Icon, Metric, Panel, State} from './ui'
-
-export const recordHref = (view: string, id: string) => '#/' + view + '/' + encodeURIComponent(id)
+import {downloadRadar, stackMatch} from './tools'
+import {cyberWatch} from './editorial'
 const titleCase = (value: string) => Object.hasOwn(publicLabels, value)
   ? publicLabels[value] : value.replaceAll('_', ' ').replace(/^./, first => first.toUpperCase())
 const matches = (text: string, query: string) => text.toLowerCase().includes(query.toLowerCase().trim())
@@ -59,12 +59,23 @@ export function Executive({snapshot}: {snapshot: Snapshot | null}) {
   </>
 }
 
-export function Radar({snapshot, selected, initialSeverity}: {snapshot: Snapshot | null; selected?: string; initialSeverity: string}) {
+export function Radar({snapshot, selected, initialSeverity, technique, stack}: {
+  snapshot: Snapshot | null; selected?: string; initialSeverity: string; technique: string; stack: string[]
+}) {
   const [query, setQuery] = useState('')
   const [ascending, setAscending] = useState(false)
+  const [matchOnly, setMatchOnly] = useState(false)
+  const [kevOnly, setKevOnly] = useState(false)
+  const [topic, setTopic] = useState('')
   const state = collectionState(snapshot)
+  const coverage = state === 'Current' || state === 'Incomplete'
   const rows = (snapshot?.threats || []).filter(row =>
-    (!initialSeverity || severity(row) === initialSeverity) && matches(row.title + ' ' + cves(row), query))
+    (!initialSeverity || severity(row) === initialSeverity) && (!technique || citedTechniques(row).includes(technique)) &&
+    (!kevOnly || row.classification?.vulnerabilities.some(cve => cve.kev)) && (!matchOnly || stackMatch(row, stack)) &&
+    (!topic || (topic === 'retail' ? ['uk_direct', 'sector'].includes(row.classification?.relevance || '') :
+      topic === 'regulatory' ? /\b(?:ico|pci(?:\s+dss)?|gdpr|data protection|payment card)\b/i.test([row.title, row.summary, row.advisory].join(' ')) :
+        /\b(?:black friday|cyber monday|christmas|fraud|phishing|delivery scam|returns|checkout)\b/i.test([row.title, row.summary, row.advisory].join(' ')))) &&
+    matches(row.title + ' ' + cves(row) + ' ' + citedTechniques(row).join(' '), query))
     .sort((a, b) => (ascending ? 1 : -1) * ((a.classification?.score ?? -1) - (b.classification?.score ?? -1)) || a.id.localeCompare(b.id))
   const hit = snapshot?.threats?.find(row => row.id === selected)
   return <>
@@ -73,15 +84,30 @@ export function Radar({snapshot, selected, initialSeverity}: {snapshot: Snapshot
       <dl className="assurance"><div><dt>Verified CVEs</dt><dd>{cves(hit)}</dd></div>
       <div><dt>Evidence confidence</dt><dd>{titleCase(hit.classification?.confidence || 'unassessed')}</dd></div>
       <div><dt>Technical severity</dt><dd>{titleCase(severity(hit).toLowerCase())}</dd></div></dl>
+      {stackMatch(hit, stack) && <p className="muted">{stackMatch(hit, stack)} · Check published applicability before acting.</p>}
       <External url={hit.url}>Open CISA catalogue entry</External>
     </Panel>}
     {selected && !hit && <div className="notice"><span>Vulnerability record is unavailable in this snapshot.</span> <a href="#/radar">Return to the radar</a></div>}
-    <Panel title="Vulnerability catalogue" detail="Compare technical severity, exploitation evidence and sector relevance.">
+    <Panel title="Vulnerability catalogue" detail="Compare technical severity, exploitation evidence and sector relevance."
+      trailing={<button className="button" type="button" disabled={!rows.length} onClick={() => downloadRadar(rows)}>Export CSV</button>}>
       <div className="filterbar">
         <label>Search CVEs and products<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Enter a CVE or product"/></label>
         <label>Severity<select aria-label="Severity" value={initialSeverity} onChange={event => {
-          location.hash = event.target.value ? '/radar?severity=' + event.target.value.toLowerCase() : '/radar'
+          const filters = new URLSearchParams()
+          if (event.target.value) filters.set('severity', event.target.value.toLowerCase())
+          if (technique) filters.set('technique', technique)
+          const query = filters.toString()
+          location.hash = '/radar' + (query ? '?' + query : '')
         }}><option value="">All severities</option>{bandOrder.map(band => <option key={band} value={band}>{titleCase(band.toLowerCase())}</option>)}</select></label>
+        <label>Topic<select aria-label="Topic" value={topic} onChange={event => setTopic(event.target.value)}>
+          <option value="">All topics</option><option value="retail">Retail relevance</option>
+          <option value="regulatory">Regulatory topics</option><option value="seasonal">Seasonal retail topics</option>
+        </select></label>
+      </div>
+      <div className="inline-links filter-toggles">
+        <label><input type="checkbox" checked={kevOnly} onChange={event => setKevOnly(event.target.checked)}/> CISA KEV only</label>
+        <label><input type="checkbox" checked={matchOnly} onChange={event => setMatchOnly(event.target.checked)}/> My Stack matches</label>
+        {technique && <a href={initialSeverity ? '#/radar?severity=' + initialSeverity.toLowerCase() : '#/radar'}>Clear technique {technique}</a>}
       </div>
       <p role="status" className="count">{snapshot?.threats ? rows.length + ' matching records' : 'Catalogue unavailable'}</p>
       {rows.length ? <div className="table-scroll" role="region" aria-label="Vulnerability results" tabIndex={0}><table>
@@ -90,7 +116,9 @@ export function Radar({snapshot, selected, initialSeverity}: {snapshot: Snapshot
           <button className="sort-button" type="button" onClick={() => setAscending(value => !value)}>Priority {ascending ? '↑' : '↓'}</button>
         </th><th scope="col">Exploitation</th><th scope="col">Retail relevance</th><th scope="col">Source date</th></tr></thead>
         <tbody>{rows.map(row => <tr key={row.id}>
-          <th scope="row"><a href={recordHref('radar', row.id)}>{row.title.replace(/^CISA KEV addition: /i, '')}</a></th>
+          <th scope="row"><a href={recordHref('radar', row.id)}>{row.title.replace(/^CISA KEV addition: /i, '')}</a>
+            {stackMatch(row, stack) && <small className="row-note">{stackMatch(row, stack)}</small>}
+            {!coverage && row.carried_forward && <small className="row-note">Carried forward</small>}</th>
           <td><span className="severity" data-tone={severity(row).toLowerCase()}>{titleCase(severity(row).toLowerCase())}</span></td>
           <td className="mono">{row.classification?.score ?? '—'}</td><td>{titleCase(row.classification?.exploitation || 'unknown')}</td>
           <td>{titleCase(row.classification?.relevance || 'unestablished')}</td><td>{row.date}</td>
@@ -100,17 +128,18 @@ export function Radar({snapshot, selected, initialSeverity}: {snapshot: Snapshot
   </>
 }
 
-export function Feed({snapshot, selected}: {snapshot: Snapshot | null; selected?: string}) {
+export function Feed({snapshot, selected, initialSource}: {snapshot: Snapshot | null; selected?: string; initialSource: string}) {
   const [query, setQuery] = useState('')
-  const [kind, setKind] = useState('All sources')
-  const stories = (snapshot?.stories || []).filter(story => (kind === 'All sources' || story.kind === kind) && matches(story.title + ' ' + story.source, query))
-  const story = selected ? snapshot?.stories.find(item => item.id === selected) : stories[0]
+  const [kind, setKind] = useState(initialSource)
+  const all = (snapshot?.stories || []).concat(cyberWatch).sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
+  const stories = all.filter(story => (kind === 'All sources' || story.kind === kind) && matches(story.title + ' ' + story.source, query))
+  const story = selected ? all.find(item => item.id === selected) : stories[0]
   return <>
     <div className="notice"><State>{snapshot?.storyCoverage || 'Loading'}</State><span>Official publications, reviewed press links and security research</span></div>
     <div className="reader-grid">
       <Panel title="Reports" detail="Published source dates">
         <div className="filterbar reader-filters"><label>Search reports<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title or publisher"/></label>
-          <label>Source type<select value={kind} onChange={event => setKind(event.target.value)}>{['All sources', 'Official', 'Press', 'Research'].map(value => <option key={value}>{value}</option>)}</select></label>
+          <label>Source type<select value={kind} onChange={event => setKind(event.target.value)}>{['All sources', 'Official', 'Press', 'Research', 'Cyber watch'].map(value => <option key={value}>{value}</option>)}</select></label>
         </div>
         <p className="count" role="status">{stories.length} {stories.length === 1 ? 'report' : 'reports'}</p>
         <ol className="report-list">{stories.map(item => <li key={item.id}><a href={recordHref('feed', item.id)} aria-current={story?.id === item.id ? 'true' : undefined}>
@@ -130,7 +159,9 @@ function ReadingPane({story}: {story: Story}) {
     <p className="reader-label">{story.kind} · {story.source}</p>
     <h2>{story.title}</h2><p className="muted">{showDate(story.date)}</p>
     <div className="evidence-block"><h3>Source evidence</h3>
-      <p className="muted">The reviewed record contains a title, date and source link. Read the publication for the full account.</p>
+      {story.summary ? <p>{story.summary}</p> :
+        <p className="muted">The reviewed record contains a title, date and source link. Read the publication for the full account.</p>}
+      {story.lesson && <p><strong>Defensive lesson · </strong>{story.lesson}</p>}
       <External url={story.url}>Read on {story.source}</External>
       {story.evidence && <External url={story.evidence}>Open primary disclosure</External>}
     </div>
@@ -147,8 +178,9 @@ export function Retail({snapshot, selected}: {snapshot: Snapshot | null; selecte
     count: incidents.filter(record => record.functions.includes(key)).length})).sort((a, b) => b.count - a.count)
   const focus = register?.records.find(record => record.id === selected)
   const rows = reports.filter(record => matches(record.title + ' ' + record.organisation, query) &&
-    (mode === 'All records' || (mode === 'Incidents' ? record.kind === 'incident' :
-      record.functions.includes(mode === 'Payments' ? 'payments' : 'supply_chain'))))
+    (mode === 'All records' || (mode === 'Incidents' ? record.kind === 'incident' : mode === 'Threat campaigns' ?
+      record.kind === 'campaign' : mode === 'Golden Quarter' ? record.seasonal :
+        record.functions.includes(mode === 'Payments' ? 'payments' : 'supply_chain'))))
   const stale = register && retailStale(register)
   const value = (number: number) => register ? stale ? 'Stale' : number : 'Unavailable'
   return <>
@@ -184,12 +216,24 @@ export function Retail({snapshot, selected}: {snapshot: Snapshot | null; selecte
     {selected && !focus && <div className="notice">Retail record unavailable in this snapshot. <a href="#/retail">Return to Retail</a></div>}
     <Panel title="Retail intelligence register" detail="Reports first entered in the past 30 days">
       <div className="filterbar"><label>Search retail records<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title or organisation"/></label>
-        <label>View<select value={mode} onChange={event => setMode(event.target.value)}>{['All records', 'Incidents', 'Supply chain', 'Payments'].map(value => <option key={value}>{value}</option>)}</select></label></div>
+        <label>View<select value={mode} onChange={event => setMode(event.target.value)}>{['All records', 'Incidents', 'Threat campaigns', 'Supply chain', 'Payments', 'Golden Quarter'].map(value => <option key={value}>{value}</option>)}</select></label></div>
       <p className="count" role="status">{rows.length} matching records</p>
       <ul className="record-list">{rows.map(record => <li key={record.id}><a href={recordHref('retail', record.id)}>
         <span className="label">{titleCase(record.kind)}</span><strong>{record.title}</strong><span className="muted">{showDate(record.timeline[0].date)}</span>
       </a></li>)}</ul>
       {!rows.length && <Empty title={register ? 'No matching retail records' : 'Retail register unavailable'}/>}
     </Panel>
+    <div className="main-grid">
+      <Panel title="Lessons for retailers" detail="Editorial recommendations linked to reviewed evidence.">
+        <ul className="tool-list">{reports.filter(record => record.lesson).slice(0, 4).map(record =>
+          <li key={record.id}><span>{record.lesson}</span><External url={record.timeline[0].url}>{record.timeline[0].publisher}</External></li>)}</ul>
+        {!reports.length && <Empty title="No reviewed lessons in this window"/>}
+      </Panel>
+      <Panel title="Golden Quarter Watch" detail="Black Friday and Cyber Monday through Christmas trading and January returns.">
+        <ul className="record-list">{register?.records.filter(record => record.seasonal).map(record =>
+          <li key={record.id}><a href={recordHref('retail', record.id)}>{record.title}</a></li>)}</ul>
+        {!register?.records.some(record => record.seasonal) && <Empty title="No reviewed seasonal entries"/>}
+      </Panel>
+    </div>
   </>
 }

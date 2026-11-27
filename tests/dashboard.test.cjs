@@ -13,7 +13,10 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-CzkkQVU7.js', 'assets/index-DIbjfxCy.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-CTJn1fMj.js', 'assets/index-CqXbLaGh.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
+  'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
+legacySource.set('classic.html', 'index.html');
 const privateKeyword = 'private-keyword-fixture';
 const sourceUrl = 'https://news.example.invalid/checkout';
 const layoutMarker = '<img data-test-injected src="/unexpected-image">';
@@ -45,7 +48,7 @@ function collection(state, hours = 0) {
     last_success_at: hoursAgo(hours + 1), feeds: []};
 }
 
-async function dashboard(t, initialResponses, {checkCsp = false, clock = false, hash = '', pathSuffix = 'classic.html'} = {}) {
+async function dashboard(t, initialResponses, {checkCsp = false, clock = false, hash = '', pathSuffix = 'classic.html', legacy = true} = {}) {
   const context = await browser.newContext({offline: true, serviceWorkers: 'block'});
   t.after(() => context.close());
   const page = await context.newPage();
@@ -53,7 +56,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
   const requests = [];
   const unexpected = [];
   const errors = [];
-  const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404,
+  const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404, 'data/flash_alert.json': 404,
     'data/executive_previous.json': 404, ...initialResponses};
   if (clock) await page.clock.install();
   if (checkCsp) {
@@ -83,8 +86,8 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
     }
     if (allowedFiles.has(file)) {
       if (file === 'favicon.ico') return route.fulfill({status: 404});
-      const staged = path.join(site, file);
-      if (file === 'classic.html' && checkCsp) {
+      const staged = legacy && legacySource.has(file) ? path.join(__dirname, '..', legacySource.get(file)) : path.join(site, file);
+      if ((file === 'classic.html' || file === 'index.html') && checkCsp) {
         const html = await fs.readFile(staged, 'utf8');
         return route.fulfill({contentType: 'text/html',
           body: html.replace('</body>', '<script>window.fixtureInlineRan = true</script></body>')});
@@ -266,13 +269,14 @@ test('Retail Centre searches locally, preserves unknowns and safely links review
   board.assertQuiet();
 });
 
-test('hosted redesign reads canonical datasets and routes legacy tools to their existing view', async t => {
+test('themed tools and legacy links use canonical datasets without leaving the app', async t => {
   const current = collection('current');
+  const item = executiveKev('10001', hoursAgo(4), {attack_refs: ['T1566', 'T1566'], is_flash: true});
   const board = await dashboard(t, {
-    'data/threats.json': [executiveKev('10001', hoursAgo(4))],
+    'data/threats.json': [item],
     'data/intelligence_status.json': {collection: current},
-    'data/flash_alert.json': 404
-  }, {pathSuffix: '', hash: '#/radar'});
+    'data/flash_alert.json': item
+  }, {pathSuffix: '', hash: '#/radar', legacy: false});
   const {page, requests} = board;
   await page.getByRole('heading', {name: 'Vulnerability Radar', exact: true}).waitFor();
   await page.getByText('1 matching records').waitFor();
@@ -285,11 +289,72 @@ test('hosted redesign reads canonical datasets and routes legacy tools to their 
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({state: 'hidden'});
   assert.ok(await search.evaluate(node => node === document.activeElement));
-  await page.getByRole('link', {name: 'More tools'}).click();
-  await page.getByRole('navigation', {name: 'Dashboard views'}).waitFor();
-  await page.goto(origin + base + '#tabAutomationContent');
-  await page.getByRole('heading', {name: /Threat Intelligence Automation/}).waitFor();
+  assert.equal(await page.getByRole('link', {name: /More tools|Extra tools/i}).count(), 0);
+  const flash = page.getByRole('region', {name: 'Flash alert'});
+  await flash.getByRole('button', {name: 'Dismiss alert'}).click();
+  await page.reload();
+  await page.getByText('1 matching records').waitFor();
+  assert.equal(await flash.count(), 0);
+  await page.goto(origin + base + 'classic.html#tabAutomationContent');
+  await page.getByRole('heading', {name: 'Service Health & Exports', exact: true}).waitFor();
   assert.equal(new URL(page.url()).pathname, base + 'classic.html');
+  assert.equal(await page.getByRole('link', {name: 'STIX 2.1 report bundle'}).getAttribute('href'), './data/threats.stix.json');
+  assert.equal(await page.getByRole('link', {name: 'RSS intelligence feed'}).getAttribute('href'), './data/feed.xml');
+  await page.getByRole('link', {name: 'MITRE ATT&CK', exact: true}).click();
+  const technique = page.getByRole('link', {name: /T1566/});
+  assert.match(await technique.locator('..').innerText(), /T1566 Phishing\s+1$/);
+  await technique.click();
+  await page.getByText('1 matching records').waitFor();
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', {name: 'Export CSV'}).click();
+  const download = await downloadEvent;
+  const stream = await download.createReadStream();
+  let csv = '';
+  for await (const chunk of stream) csv += chunk;
+  assert.match(csv, /T1566/);
+  assert.match(csv, /CVE-2026-10001/);
+  board.assertQuiet();
+});
+
+test('themed My Stack migrates browser preferences and sends no query over the network', async t => {
+  const board = await dashboard(t, {
+    'data/threats.json': [executiveKev('10001', hoursAgo(4))],
+    'data/intelligence_status.json': {collection: collection('current')}
+  }, {pathSuffix: '', hash: '#/stack', legacy: false});
+  const {page, requests} = board;
+  await page.evaluate(() => localStorage.setItem('cti_my_tech_stack', JSON.stringify(['Fixture gateway'])));
+  await page.reload();
+  await page.getByText('Declared product match', {exact: true}).waitFor();
+  const before = requests.length;
+  await page.getByLabel('Product or topic').fill(privateKeyword);
+  await page.getByRole('button', {name: 'Add to My Stack'}).click();
+  await page.getByText(privateKeyword, {exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Clear My Stack'}).click();
+  assert.equal(await page.evaluate(() => localStorage.getItem('cti_my_tech_stack')), null);
+  assert.equal(requests.length, before);
+  assert.equal(requests.some(request => request.url.includes(privateKeyword) || request.body?.includes(privateKeyword)), false);
+  board.assertQuiet();
+});
+
+test('themed briefings render the validated pair and reject mismatched citations', async t => {
+  const stamp = hoursAgo(1);
+  const evidence = {schema_version: 1, period: 'weekly', generated_at: stamp, validated_at: stamp, coverage: 'current',
+    sources: [{id: 'S01', publisher: 'Public disclosure', url: sourceUrl}],
+    selection: {facts: ['S01'], assessments: [], recommendations: []}};
+  const summary = 'AI-assisted selection of public-source evidence.\nGenerated ' + stamp + ' · Validated ' + stamp +
+    '\n\nFacts and attributed reporting\n- Reviewed disclosure. [S01]\n\nSources\n- [S01] Public disclosure <' + sourceUrl + '>\n';
+  const board = await dashboard(t, {
+    'data/threats.json': [],
+    'data/intelligence_status.json': {collection: collection('current'), weekly: {state: 'available', generated_at: stamp, validated_at: stamp}},
+    'data/weekly_briefing.json': evidence, 'data/weekly_summary.md': summary
+  }, {pathSuffix: '', hash: '#/briefings/weekly', legacy: false});
+  const {page, responses} = board;
+  await page.getByText('Reviewed disclosure.', {exact: false}).waitFor();
+  assert.equal(await page.getByRole('link', {name: '[S01] Public disclosure'}).getAttribute('href'), sourceUrl);
+  responses['data/weekly_summary.md'] = summary.replace('[S01]', '[S02]');
+  await page.reload();
+  await page.getByText('Briefing validation or loading failed').waitFor();
+  assert.equal(await page.getByRole('link', {name: '[S01] Public disclosure'}).count(), 0);
   board.assertQuiet();
 });
 

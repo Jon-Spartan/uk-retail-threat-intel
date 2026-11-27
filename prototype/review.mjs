@@ -108,6 +108,14 @@ try {
   assert.equal(desktop.url().includes('Cleverbridge'), false)
   await desktop.getByRole('button', {name: 'Switch to light theme'}).click()
   await audit(desktop, 'radar light')
+  for (const [route, title] of [['mitre', 'MITRE ATT&CK'], ['briefings', 'Intelligence Briefings'], ['stack', 'My Stack'],
+    ['health', 'Service Health & Exports']]) {
+    await desktop.goto(url + '#/' + route)
+    await desktop.getByRole('heading', {name: title, exact: true}).waitFor()
+    assert.equal(await desktop.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    await audit(desktop, route + ' light')
+    await desktop.screenshot({path: 'review/' + route + '-1440x900.png', animations: 'disabled'})
+  }
   await desktop.goto(url + '#/retail/retail-0003')
   await desktop.getByRole('heading', {name: 'Evidence timeline'}).waitFor()
   assert.match(await desktop.getByText('Initial access', {exact: true}).locator('..').innerText(), /Unknown/)
@@ -122,6 +130,12 @@ try {
   await phone.getByRole('heading', {name: 'Intelligence Feed', exact: true}).waitFor()
   assert.equal(await phone.getByRole('dialog').count(), 0)
   assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  await nav.click()
+  await phone.getByRole('dialog').getByRole('link', {name: 'My Stack', exact: true}).click()
+  await phone.getByRole('heading', {name: 'My Stack', exact: true}).waitFor()
+  assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  await audit(phone, 'stack mobile dark')
+  await phone.screenshot({path: 'review/stack-320x800.png', animations: 'disabled'})
   await phone.close()
 
   const unavailable = await pageAt(1440, 900)

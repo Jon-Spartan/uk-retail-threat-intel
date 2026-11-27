@@ -13,13 +13,22 @@ export type Threat = {
   date: string
   source: string
   first_seen_at?: string
+  summary?: string
+  subsector?: string
+  advisory?: string
+  tags?: string[]
+  cves?: string[]
+  reported_cves?: string[]
+  attack_refs?: string[]
+  carried_forward?: boolean
+  affected_products?: {vendor: string; product: string; source: string}[]
   classification?: {
     version: number
     score: number
     relevance: string
     confidence: string
     exploitation: string
-    vulnerabilities: { id: string; kev: boolean; cvss?: {score: number; version: string} }[]
+    vulnerabilities: { id: string; kev: boolean; cvss?: {score: number; version: string}; epss?: {probability: number; date: string} }[]
   }
 }
 
@@ -28,15 +37,20 @@ export type Evidence = {date: string; kind: string; publisher: string; url: stri
 export type RetailRecord = {
   id: string; title: string; kind: string; organisation: string; geography: string | null; status: string
   confidence: string; relevance: string; functions: string[]; initial_access: string | null; impact: string | null
-  exposure: string | null; lesson: string; timeline: Evidence[]
+  exposure: string | null; lesson: string; timeline: Evidence[]; seasonal?: boolean
 }
 
 export type RetailRegister = {version: number; reviewed_on: string; records: RetailRecord[]}
-export type Story = {id: string; source: string; title: string; url: string; date: string; evidence?: string; kind: 'Official' | 'Press' | 'Research'}
+export type Story = {id: string; source: string; title: string; url: string; date: string; evidence?: string;
+  kind: 'Official' | 'Press' | 'Research' | 'Cyber watch'; summary?: string; lesson?: string}
+export type Period = 'daily' | 'weekly'
+export type BriefingStatus = {state: string; generated_at: string | null; validated_at: string | null}
 export type Snapshot = {
   threats: Threat[] | null
   collection: Collection | null
   briefing: string
+  briefings: Record<Period, BriefingStatus | null>
+  flash: {id: string; title: string; url: string; advisory: string | null} | null
   stories: Story[]
   storyCoverage: string
   retail: RetailRegister | null
@@ -53,10 +67,10 @@ export const publicLabels: Record<string, string> = {uk_direct: 'Direct UK retai
 
 const paths = {
   threats: 'data/threats.json', status: 'data/intelligence_status.json', official: 'data/official_updates.json',
-  press: 'data/press_updates.json', retail: 'assets/retail-intelligence.json'
+  press: 'data/press_updates.json', retail: 'assets/retail-intelligence.json', flash: 'data/flash_alert.json'
 } as const
 
-function object(value: unknown): value is Record<string, unknown> {
+export function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -108,9 +122,19 @@ async function read(name: keyof typeof paths): Promise<unknown> {
   } catch { return null }
 }
 
+function briefingStatus(value: unknown): BriefingStatus | null {
+  if (!object(value) || typeof value.state !== 'string') return null
+  const date = (entry: unknown) => typeof entry === 'string' && Number.isFinite(Date.parse(entry)) ? entry : null
+  return {state: value.state, generated_at: date(value.generated_at), validated_at: date(value.validated_at)}
+}
+
+export const citedTechniques = (record: Threat) => (Array.isArray(record.attack_refs) ? record.attack_refs : [])
+  .filter(id => typeof id === 'string' && /^T\d{4}(?:\.\d{3})?$/.test(id))
+export const recordHref = (view: string, id: string) => '#/' + view + '/' + encodeURIComponent(id)
+
 export async function loadSnapshot(): Promise<Snapshot> {
-  const [threats, status, official, press, retail] = await Promise.all(
-    [read('threats'), read('status'), read('official'), read('press'), read('retail')])
+  const [threats, status, official, press, retail, alert] = await Promise.all(
+    [read('threats'), read('status'), read('official'), read('press'), read('retail'), read('flash')])
   const collection = object(status) && object(status.collection) && typeof status.collection.state === 'string' &&
     (status.collection.data_updated_at === null || typeof status.collection.data_updated_at === 'string') ? status.collection as Collection : null
   const headlineCoverage = [official, press].filter(object)
@@ -118,9 +142,16 @@ export async function loadSnapshot(): Promise<Snapshot> {
     !Number.isFinite(Date.parse(item.checked_at)) || Date.now() - Date.parse(item.checked_at) > 90 * 60_000)
   const incomplete = headlineCoverage.length === 1 ||
     (object(official) && object(official.sources) && Object.values(official.sources).some(state => state !== 'current'))
+  const records = Array.isArray(threats) && threats.every(validateThreat) ? threats : null
+  const flagged = object(alert) && alert.is_flash === true
+    ? records?.find(record => record.id === alert.id && record.url === alert.url && record.classification?.exploitation === 'confirmed') : null
+  const flashUrl = safeUrl(flagged?.url)
   return {
-    threats: Array.isArray(threats) && threats.every(validateThreat) ? threats : null,
+    threats: records,
     collection,
+    briefings: {daily: briefingStatus(object(status) ? status.daily : null), weekly: briefingStatus(object(status) ? status.weekly : null)},
+    flash: flagged && flashUrl ? {id: flagged.id, title: flagged.title, url: flashUrl,
+      advisory: typeof flagged.advisory === 'string' ? flagged.advisory : null} : null,
     briefing: object(status) && object(status.daily) && typeof status.daily.validated_at === 'string'
       ? 'Last validated ' + showDate(status.daily.validated_at, true) : 'No validated daily briefing available',
     stories: [...readStories(official, 'Official'), ...readStories(press, 'Press')]

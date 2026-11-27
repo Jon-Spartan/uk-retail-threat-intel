@@ -52,7 +52,7 @@ No environment variables are required for the initial preview, tests or collecti
 
 Hosted collection is scheduled at minutes 07, 22, 37 and 52 of each hour. The dashboard’s sync button checks the latest published snapshot. If its timestamp is stale, a maintainer can start **Collect and publish UK retail intelligence** from GitHub Actions on the default branch and verify that Pages serves a newer collection timestamp.
 
-Open **CISA KEV** to check the shortlist and filter vulnerabilities. Search, My Stack and CSV export apply to the catalogue results. Open **Stories** for official headlines, Retail watch, Cyber watch and the weekly roundup. Links to individual story sections open that view directly.
+Open **Vulnerability Radar** to filter and export catalogue results. **My Stack** manages browser-local preferences and labels declared product matches separately from topic matches. **Intelligence Feed** includes official headlines, reviewed press links and Cyber watch. **Intelligence Briefings** includes daily and weekly reports and the editorial roundup.
 
 Open **Executive** for the public sector briefing. It uses the same validated vulnerability and collection status files as CISA KEV, plus the reviewed Retail Watch notes. It uses no My Stack preferences and requires no AI key. The **Priority watch** label means a current, complete snapshot includes a documented retail-relevant record scoring at least 50. **Not assessed** is shown when that condition is unsupported. This is a project monitoring label based on the available evidence.
 
@@ -117,7 +117,7 @@ The Python suite uses fixtures and mocked transport. The browser suite serves th
 
 ## GitHub Pages deployment
 
-The new layout is the Pages entry point. The More tools link opens the classic dashboard for alerts, briefings, exports and My Stack. Both use the same validated public dataset. See [the front-end build instructions](prototype/README.md) for the locked build, local review and publication manifest.
+The Pages app contains Executive, Retail, Radar, Feed, MITRE ATT&CK, Briefings, My Stack and Service Health & Exports. Existing section links open their corresponding themed view. The hosted layout uses the validated public datasets. See [the front-end build instructions](prototype/README.md) for the locked build, local review and publication manifest.
 
 After explicit publication approval, push only the clean release branch to the independent GitHub repository. Its history starts with the approved dataset. Use the latest source policy when approving additional sources.
 
