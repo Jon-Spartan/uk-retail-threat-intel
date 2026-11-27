@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-DoaQSFhX.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-BXem3iOs.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -401,6 +401,15 @@ test('sector and AI views match headlines locally and show coverage gaps', async
   await page.getByRole('link', {name: 'AI Intelligence', exact: true}).click();
   await page.reload();
   await page.getByText('Headline coverage is unavailable.', {exact: true}).waitFor();
+  for (const [label, publisher, url] of [
+    ['Legal Sector', 'Cybercrime guidance for solicitors', 'https://www.sra.org.uk/solicitors/guidance/cybercrime/'],
+    ['Finance Sector', 'Operational resilience resources', 'https://www.fca.org.uk/firms/operational-resilience'],
+    ['Healthcare Sector', 'Cyber alerts and incident support', 'https://digital.nhs.uk/cyber-and-data-security/incidents-and-alerts']
+  ]) {
+    await page.getByRole('link', {name: label, exact: true}).click();
+    await page.getByText('Headline coverage is unavailable.', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('link', {name: publisher, exact: true}).getAttribute('href'), url);
+  }
   board.assertQuiet();
 });
 

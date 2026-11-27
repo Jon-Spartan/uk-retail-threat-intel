@@ -7,7 +7,7 @@ import {Feed, feedSources} from './feed'
 import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
 import {cyberWatch, Roundup} from './editorial'
 import {ReviewQueueProvider, ReviewQueueView} from './reviewQueue'
-import {TopicWatch, watchTopics} from './topicWatch'
+import {TopicWatch} from './topicWatch'
 import {Icon, State} from './ui'
 import './style.css'
 
@@ -180,7 +180,7 @@ function App() {
         <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
         {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
         {(current.view === 'legal' || current.view === 'finance' || current.view === 'healthcare' || current.view === 'ai') &&
-          <TopicWatch topic={watchTopics[current.view]} snapshot={snapshot}/>}
+          <TopicWatch topic={current.view} snapshot={snapshot}/>}
         {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}
         {current.view === 'feed' && <Feed snapshot={snapshot} selected={current.id} source={current.source}/>}
         {current.view === 'mitre' && <Mitre snapshot={snapshot}/>}

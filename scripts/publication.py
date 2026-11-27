@@ -42,7 +42,7 @@ ASSETS = (
     "SCORING.md",
     "SOURCES.md",
     REGISTER,
-    "assets/index-DoaQSFhX.js",
+    "assets/index-BXem3iOs.js",
     "assets/index-Bm240rOB.css",
     "licenses/react.txt",
     "licenses/react-dom.txt",
@@ -55,7 +55,7 @@ ASSETS = (
 ASSET_SOURCES = {
     "index.html": "redesign/index.html",
     "classic.html": "redesign/index.html",
-    "assets/index-DoaQSFhX.js": "redesign/assets/index-DoaQSFhX.js",
+    "assets/index-BXem3iOs.js": "redesign/assets/index-BXem3iOs.js",
     "assets/index-Bm240rOB.css": "redesign/assets/index-Bm240rOB.css",
     "licenses/react.txt": "redesign/licenses/react.txt",
     "licenses/react-dom.txt": "redesign/licenses/react-dom.txt",
