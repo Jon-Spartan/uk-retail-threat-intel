@@ -6,10 +6,12 @@ const root = dirname(fileURLToPath(import.meta.url))
 if (!process.argv[2]) throw Error('Pass a site directory created by scripts.publication stage-site.')
 const staged = resolve(process.argv[2])
 const files = [
+  ['site_status.json', 'site_status.json', true],
   ['data/threats.json', 'data/threats.json'],
   ['data/intelligence_status.json', 'data/intelligence_status.json'],
   ['data/press_updates.json', 'data/press_updates.json', true],
   ['data/official_updates.json', 'data/official_updates.json', true],
+  ['data/intelligence_history.json', 'data/intelligence_history.json', true],
   ['data/flash_alert.json', 'data/flash_alert.json', true],
   ['data/daily_briefing.json', 'data/daily_briefing.json', true],
   ['data/daily_summary.md', 'data/daily_summary.md', true],

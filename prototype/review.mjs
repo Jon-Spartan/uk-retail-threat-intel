@@ -11,7 +11,7 @@ const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 const server = createServer(async (request, response) => {
   const pathname = new URL(request.url, 'http://localhost').pathname
   const file = pathname.startsWith(base) ? pathname.slice(base.length) || 'index.html' : ''
-  if (!/^(?:index\.html|(?:assets|data|fonts)\/[A-Za-z0-9_.-]+)$/.test(file)) return response.writeHead(404).end()
+  if (!/^(?:index\.html|site_status\.json|(?:assets|data|fonts)\/[A-Za-z0-9_.-]+)$/.test(file)) return response.writeHead(404).end()
   try {
     const body = await readFile(join('dist', file))
     response.writeHead(200, {'Content-Type': types[extname(file)] || 'text/plain'}).end(body)
@@ -139,7 +139,7 @@ try {
   await phone.close()
 
   const unavailable = await pageAt(1440, 900)
-  await unavailable.route('**/data/*.json', route => route.fulfill({status: 404}))
+  await unavailable.route(address => /\/data\/[^/]+\.json$/.test(address.pathname), route => route.fulfill({status: 404}))
   await unavailable.goto(url, {waitUntil: 'networkidle'})
   await unavailable.getByText('No verified snapshot available').waitFor()
   await unavailable.close()

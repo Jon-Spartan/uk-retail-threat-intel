@@ -119,6 +119,11 @@ The Python suite uses fixtures and mocked transport. The browser suite serves th
 
 The Pages app contains Executive, Retail, Radar, Feed, MITRE ATT&CK, Briefings, My Stack and Service Health & Exports. Existing section links open their corresponding themed view. The hosted layout uses the validated public datasets. See [the front-end build instructions](prototype/README.md) for the locked build, local review and publication manifest.
 
+- **What changed** compares complete, current views with a baseline saved in this browser. It tracks public KEV IDs, story IDs and retail timeline entries, including follow-ups. It retains up to 1,500 seen identifiers per group. An incomplete or stale group shows comparison unavailable. Mark as seen resets the comparison for available groups.
+- **Daily history** keeps the latest complete vulnerability collection per UTC day for up to 90 days and displays the last 14 days. Counts reflect the monitored snapshot and confirmed catalogue matches. Missing days appear as gaps, and earlier dates are not inferred.
+- **Service Health** separates the last successful collection, recent source checks, when the served Pages build was prepared and when the browser last checked. The build timestamp marks artifact preparation. A mismatch can indicate that the browser received files from different snapshots.
+- **Briefings** can display a source-linked selection directly from validated public data when a validated AI-assisted briefing is unavailable. Dates and coverage limits stay visible.
+
 After explicit publication approval, push only the clean release branch to the independent GitHub repository. Its history starts with the approved dataset. Use the latest source policy when approving additional sources.
 
 1. Put the reviewed changes on the default branch and allow GitHub Actions to run. Keep `ENABLE_PAGES_PUBLICATION` unset for the first hosted collection and validation check.

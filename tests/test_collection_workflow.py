@@ -113,7 +113,7 @@ class CollectionWorkflowTests(unittest.TestCase):
             stage_site(data, Path("staged-site"), ROOT)
             public = {file.relative_to("staged-site").as_posix()
                       for file in Path("staged-site").rglob("*") if file.is_file()}
-            self.assertEqual(public, set(ASSETS) | {f"data/{name}" for name in files})
+            self.assertEqual(public, set(ASSETS) | {"site_status.json"} | {f"data/{name}" for name in files})
             first_collected = read_json(data / "intelligence_status.json")["collection"]["data_updated_at"]
             pipeline.run_collection()
             files = validate_release_data(data)

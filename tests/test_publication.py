@@ -50,6 +50,7 @@ class PublicationTests(unittest.TestCase):
         site = self.folder / "site"
         publication.stage_site(self.data, site, ROOT)
         expected = set(publication.ASSETS)
+        expected.add("site_status.json")
         expected.update(f"data/{path.name}" for path in self.data.iterdir())
         actual = {path.relative_to(site).as_posix() for path in site.rglob("*") if path.is_file()}
         self.assertEqual(actual, expected)

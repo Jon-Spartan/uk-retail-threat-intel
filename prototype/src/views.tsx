@@ -4,6 +4,7 @@ import type {Snapshot, Story, Threat} from './data'
 import {Bars, Empty, External, Icon, Metric, Panel, State} from './ui'
 import {downloadRadar, stackMatch} from './tools'
 import {cyberWatch} from './editorial'
+import {Activity, Trend} from './activity'
 const titleCase = (value: string) => Object.hasOwn(publicLabels, value)
   ? publicLabels[value] : value.replaceAll('_', ' ').replace(/^./, first => first.toUpperCase())
 const matches = (text: string, query: string) => text.toLowerCase().includes(query.toLowerCase().trim())
@@ -28,10 +29,10 @@ export function Executive({snapshot}: {snapshot: Snapshot | null}) {
       <Metric label="Documented retail relevance" value={current ? related : state} detail="Direct UK or sector relevance" icon="retail" tone="green"/>
       <Metric label="Reported retail incidents" value={editorialStale ? 'Stale' : retail?.length ?? 'Unavailable'} detail={'30 days · Review ' + showDate(snapshot?.retail?.reviewed_on)} icon="feed" tone="violet"/>
     </dl>
+    <Activity snapshot={snapshot}/>
     <div className="main-grid">
-      <Panel title="Threat intelligence trend" detail="14-day window · collection history"
-        trailing={<span className="label">History unavailable</span>}>
-        <div className="chart-placeholder"><Empty title="Daily aggregates are unavailable">The published comparison tracks changes between two snapshots.</Empty></div>
+      <Panel title="Threat intelligence trend" detail="Latest complete snapshot per UTC day · 14-day view">
+        <Trend snapshot={snapshot}/>
       </Panel>
       <Panel title="Severity distribution" detail={snapshot?.threats ? 'Dated vulnerability snapshot · technical severity' : 'Vulnerability snapshot unavailable'}>
         {snapshot?.threats ? <Bars rows={bandOrder.map(band => ({label: titleCase(band.toLowerCase()), tone: band.toLowerCase(),
@@ -171,13 +172,14 @@ function ReadingPane({story}: {story: Story}) {
 export function Retail({snapshot, selected}: {snapshot: Snapshot | null; selected?: string}) {
   const [mode, setMode] = useState('All records')
   const [query, setQuery] = useState('')
+  const [period, setPeriod] = useState('recent')
   const register = snapshot?.retail
   const reports = register?.records.filter(lastThirty) || []
   const incidents = reports.filter(record => record.kind === 'incident')
   const functions = [...new Set(incidents.flatMap(record => record.functions))].map(key => ({label: titleCase(key),
     count: incidents.filter(record => record.functions.includes(key)).length})).sort((a, b) => b.count - a.count)
   const focus = register?.records.find(record => record.id === selected)
-  const rows = reports.filter(record => matches(record.title + ' ' + record.organisation, query) &&
+  const rows = (period === 'archive' ? register?.records || [] : reports).filter(record => matches(record.title + ' ' + record.organisation, query) &&
     (mode === 'All records' || (mode === 'Incidents' ? record.kind === 'incident' : mode === 'Threat campaigns' ?
       record.kind === 'campaign' : mode === 'Golden Quarter' ? record.seasonal :
         record.functions.includes(mode === 'Payments' ? 'payments' : 'supply_chain'))))
@@ -214,8 +216,11 @@ export function Retail({snapshot, selected}: {snapshot: Snapshot | null; selecte
       <h3>Defensive lesson</h3><p>{focus.lesson}</p>
     </Panel>}
     {selected && !focus && <div className="notice">Retail record unavailable in this snapshot. <a href="#/retail">Return to Retail</a></div>}
-    <Panel title="Retail intelligence register" detail="Reports first entered in the past 30 days">
+    <Panel title="Retail intelligence register" detail={period === 'archive' ? 'All reviewed records, including historical incidents' :
+      'Reports first entered in the past 30 days'}>
       <div className="filterbar"><label>Search retail records<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title or organisation"/></label>
+        <label>Date range<select aria-label="Date range" value={period} onChange={event => setPeriod(event.target.value)}>
+          <option value="recent">Last 30 days</option><option value="archive">All reviewed records</option></select></label>
         <label>View<select value={mode} onChange={event => setMode(event.target.value)}>{['All records', 'Incidents', 'Threat campaigns', 'Supply chain', 'Payments', 'Golden Quarter'].map(value => <option key={value}>{value}</option>)}</select></label></div>
       <p className="count" role="status">{rows.length} matching records</p>
       <ul className="record-list">{rows.map(record => <li key={record.id}><a href={recordHref('retail', record.id)}>

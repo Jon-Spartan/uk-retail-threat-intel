@@ -12,6 +12,10 @@ PUBLISHERS = {
     "The Register": ("www.theregister.com", r"/(?:cyber-crime|security)/[0-9]{4}/[0-9]{2}/[0-9]{2}/[a-z0-9-]+/[0-9]+", "attributed"),
     "Cleverbridge": ("grow.cleverbridge.com", r"/incident-update", "first_party"),
     "McDonald’s Japan": ("www.mcdonalds.co.jp", r"/company/info/[0-9]+[a-z].html|/company/info/[0-9]+[a-z]/", "first_party"),
+    "Flight Centre Travel Group (ASX)": ("announcements.asx.com.au", r"/asxpdf/20261126/pdf/07731r59zrz6zd\.pdf", "first_party"),
+    "Marks & Spencer": ("corporate.marksandspencer.com",
+                        r"/sites/marksandspencer/files/marksandspencer/annual-report/m-and-s-financial-statements-2026\.pdf|"
+                        r"/newsroom/press-releases/cyber-incident-further-update(?:-0)?", "first_party"),
 }
 CATEGORIES = set(("ransomware credential_theft phishing supply_chain exploitation ecommerce_fraud "
                   "payment_card data_breach disruption insider ai_enabled unclassified").split())

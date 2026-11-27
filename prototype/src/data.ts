@@ -1,5 +1,6 @@
 export type Collection = {
   state: string
+  checked_at?: string | null
   data_updated_at: string | null
   last_success_at: string | null
   feeds?: { name: string; state: string }[]
@@ -45,6 +46,7 @@ export type Story = {id: string; source: string; title: string; url: string; dat
   kind: 'Official' | 'Press' | 'Research' | 'Cyber watch'; summary?: string; lesson?: string}
 export type Period = 'daily' | 'weekly'
 export type BriefingStatus = {state: string; generated_at: string | null; validated_at: string | null}
+export type HistoryDay = {collected_at: string; severity: Record<string, number>; kev: number}
 export type Snapshot = {
   threats: Threat[] | null
   collection: Collection | null
@@ -53,6 +55,10 @@ export type Snapshot = {
   flash: {id: string; title: string; url: string; advisory: string | null} | null
   stories: Story[]
   storyCoverage: string
+  history: HistoryDay[] | null
+  browserCheckedAt: string
+  siteStatus: {prepared_at: string; data_updated_at: string | null} | null
+  headlineChecks: {name: string; checkedAt: string | null; coverage: string}[]
   retail: RetailRegister | null
 }
 
@@ -67,7 +73,8 @@ export const publicLabels: Record<string, string> = {uk_direct: 'Direct UK retai
 
 const paths = {
   threats: 'data/threats.json', status: 'data/intelligence_status.json', official: 'data/official_updates.json',
-  press: 'data/press_updates.json', retail: 'assets/retail-intelligence.json', flash: 'data/flash_alert.json'
+  press: 'data/press_updates.json', retail: 'assets/retail-intelligence.json', flash: 'data/flash_alert.json',
+  history: 'data/intelligence_history.json', publication: 'site_status.json'
 } as const
 
 export function object(value: unknown): value is Record<string, unknown> {
@@ -117,7 +124,9 @@ function readStories(value: unknown, kind: 'Official' | 'Press'): Story[] {
 
 async function read(name: keyof typeof paths): Promise<unknown> {
   try {
-    const response = await fetch(new URL(paths[name], document.baseURI), {signal: AbortSignal.timeout(6000)})
+    const url = new URL(paths[name], document.baseURI)
+    if (hostedPreview && name !== 'retail') url.searchParams.set('check', String(Date.now()))
+    const response = await fetch(url, {signal: AbortSignal.timeout(6000)})
     return response.ok ? await response.json() : null
   } catch { return null }
 }
@@ -132,23 +141,50 @@ export const citedTechniques = (record: Threat) => (Array.isArray(record.attack_
   .filter(id => typeof id === 'string' && /^T\d{4}(?:\.\d{3})?$/.test(id))
 export const recordHref = (view: string, id: string) => '#/' + view + '/' + encodeURIComponent(id)
 
+function timestamp(value: unknown) {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value)) ? value : null
+}
+
+function readHistory(value: unknown): HistoryDay[] | null {
+  if (!object(value) || value.version !== 1 || !Array.isArray(value.days) || value.days.length > 90) return null
+  const days = value.days as unknown[]
+  if (!days.every(row => object(row) && timestamp(row.collected_at) && Number.isInteger(row.kev) &&
+    Number(row.kev) >= 0 && Number(row.kev) <= 1000 && object(row.severity) && bandOrder.every(band =>
+      object(row.severity) && Number.isInteger(row.severity[band]) && Number(row.severity[band]) >= 0 &&
+      Number(row.severity[band]) <= 1000))) return null
+  return days as HistoryDay[]
+}
+
 export async function loadSnapshot(): Promise<Snapshot> {
-  const [threats, status, official, press, retail, alert] = await Promise.all(
-    [read('threats'), read('status'), read('official'), read('press'), read('retail'), read('flash')])
+  const [threats, status, official, press, retail, alert, history, publication] = await Promise.all(
+    [read('threats'), read('status'), read('official'), read('press'), read('retail'), read('flash'), read('history'), read('publication')])
   const collection = object(status) && object(status.collection) && typeof status.collection.state === 'string' &&
     (status.collection.data_updated_at === null || typeof status.collection.data_updated_at === 'string') ? status.collection as Collection : null
   const headlineCoverage = [official, press].filter(object)
   const outdated = headlineCoverage.some(item => typeof item.checked_at !== 'string' ||
     !Number.isFinite(Date.parse(item.checked_at)) || Date.now() - Date.parse(item.checked_at) > 90 * 60_000)
   const incomplete = headlineCoverage.length === 1 ||
-    (object(official) && object(official.sources) && Object.values(official.sources).some(state => state !== 'current'))
+    (object(official) && object(official.sources) && Object.values(official.sources).some(state => state !== 'current')) ||
+    (object(press) && press.research === 'unavailable')
   const records = Array.isArray(threats) && threats.every(validateThreat) ? threats : null
   const flagged = object(alert) && alert.is_flash === true
     ? records?.find(record => record.id === alert.id && record.url === alert.url && record.classification?.exploitation === 'confirmed') : null
   const flashUrl = safeUrl(flagged?.url)
+  const preparedAt = object(publication) && timestamp(publication.prepared_at)
+  const headlineChecks = [
+    ...Object.entries(publishers).filter(([key]) => ['ncsc', 'cisa', 'cert_eu_advisories', 'cert_eu_briefs'].includes(key)).map(([key, name]) =>
+      ({name, checkedAt: object(official) ? timestamp(official.checked_at) : null,
+        coverage: object(official) && object(official.sources) && official.sources[key] === 'current' ? 'Checked' : 'Unavailable'})),
+    {name: 'Cyber news and research', checkedAt: object(press) ? timestamp(press.checked_at) : null,
+      coverage: !object(press) ? 'Unavailable' : press.research === 'unavailable' ? 'Research incomplete' : 'Checked'}
+  ]
   return {
     threats: records,
     collection,
+    history: readHistory(history),
+    browserCheckedAt: new Date().toISOString(),
+    siteStatus: preparedAt ? {prepared_at: preparedAt, data_updated_at: object(publication) ? timestamp(publication.data_updated_at) : null} : null,
+    headlineChecks,
     briefings: {daily: briefingStatus(object(status) ? status.daily : null), weekly: briefingStatus(object(status) ? status.weekly : null)},
     flash: flagged && flashUrl ? {id: flagged.id, title: flagged.title, url: flashUrl,
       advisory: typeof flagged.advisory === 'string' ? flagged.advisory : null} : null,

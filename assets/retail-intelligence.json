@@ -48,6 +48,34 @@
       "timeline": [
         {"date": "2026-11-20", "kind": "report", "publisher": "McDonald’s Japan", "url": "https://www.mcdonalds.co.jp/company/info/261120a/", "summary": "The company confirmed that a third party accessed some customer-related information in its official app database. This is international sector intelligence."}
       ]
+    },
+    {
+      "id": "retail-0005", "kind": "incident", "title": "Flight Centre investigates unusual activity in a booking supplier’s system",
+      "organisation": "Flight Centre Travel Group", "organisation_type": "Leisure travel retailer", "geography": null,
+      "status": "investigating", "relevance": "sector", "confidence": "first_party", "supplier_type": null,
+      "categories": ["supply_chain"], "functions": ["supply_chain", "customer_data"], "seasonal": false,
+      "initial_access": null,
+      "impact": "The company said the activity was confined to an accommodation booking system at the time of its filing. It said flight and corporate travel bookings were unaffected.",
+      "exposure": "The company reported that some customer information may have been accessed. The investigation had not established the full extent.",
+      "lesson": "Agree in advance how booking suppliers report incidents and how to establish which customer services and records are affected.",
+      "timeline": [
+        {"date": "2026-11-26", "kind": "report", "publisher": "Flight Centre Travel Group (ASX)", "url": "https://announcements.asx.com.au/asxpdf/20261126/pdf/07731r59zrz6zd.pdf", "summary": "Flight Centre reported an investigation into unusual activity in a third-party accommodation booking system. The extent of any customer data access remained under investigation."}
+      ]
+    },
+    {
+      "id": "retail-0006", "kind": "incident", "title": "Marks & Spencer reports trading disruption after a cyber incident",
+      "organisation": "Marks & Spencer", "organisation_type": "Retailer", "geography": "United Kingdom",
+      "status": "reported", "relevance": "uk_direct", "confidence": "first_party", "supplier_type": null,
+      "categories": ["disruption"], "functions": ["physical_stores", "payments", "ecommerce", "logistics"], "seasonal": false,
+      "initial_access": null,
+      "impact": "The retailer reported temporary disruption to contactless payments and Click & Collect, then paused new online and app orders during its response.",
+      "exposure": null,
+      "lesson": "Plan service-specific continuity messages so customers know which payment, ordering and collection options are available during disruption.",
+      "timeline": [
+        {"date": "2025-04-22", "kind": "report", "publisher": "Marks & Spencer", "url": "https://corporate.marksandspencer.com/sites/marksandspencer/files/marksandspencer/annual-report/m-and-s-financial-statements-2026.pdf", "summary": "The company’s annual report dates its first public announcement of the incident to 22 April 2025."},
+        {"date": "2025-04-23", "kind": "update", "publisher": "Marks & Spencer", "url": "https://corporate.marksandspencer.com/newsroom/press-releases/cyber-incident-further-update", "summary": "The retailer reported paused contactless payments and Click & Collect, and possible online delivery delays. It said stores remained open."},
+        {"date": "2025-04-25", "kind": "update", "publisher": "Marks & Spencer", "url": "https://corporate.marksandspencer.com/newsroom/press-releases/cyber-incident-further-update-0", "summary": "The retailer said it had temporarily stopped taking orders on its websites and apps. Stores remained open."}
+      ]
     }
   ]
 }

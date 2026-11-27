@@ -7,7 +7,7 @@ import math
 import re
 import shutil
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import UUID
@@ -23,11 +23,13 @@ from classification import ARCHIVE_FIELDS, ATTACK_ID, classification_is_valid, p
 from official_updates import FILENAME as OFFICIAL_UPDATES_FILE, validate_updates
 from press_updates import FILENAME as PRESS_UPDATES_FILE, validate_press
 from retail_intelligence import REGISTER, validate_register
+from intelligence_history import FILENAME as HISTORY_FILE, validate_history
 
 
 REQUIRED = ("threats.json", "intelligence_status.json", "threats.stix.json", "feed.xml")
 OPTIONAL = (
     EXECUTIVE_PREVIOUS_FILE,
+    HISTORY_FILE,
     OFFICIAL_UPDATES_FILE,
     PRESS_UPDATES_FILE,
     "flash_alert.json",
@@ -40,8 +42,8 @@ ASSETS = (
     "SCORING.md",
     "SOURCES.md",
     REGISTER,
-    "assets/index-CTJn1fMj.js",
-    "assets/index-CqXbLaGh.css",
+    "assets/index-qRaKaUI4.js",
+    "assets/index-CkINmDuK.css",
     "licenses/react.txt",
     "licenses/react-dom.txt",
     "licenses/scheduler.txt",
@@ -53,8 +55,8 @@ ASSETS = (
 ASSET_SOURCES = {
     "index.html": "redesign/index.html",
     "classic.html": "redesign/index.html",
-    "assets/index-CTJn1fMj.js": "redesign/assets/index-CTJn1fMj.js",
-    "assets/index-CqXbLaGh.css": "redesign/assets/index-CqXbLaGh.css",
+    "assets/index-qRaKaUI4.js": "redesign/assets/index-qRaKaUI4.js",
+    "assets/index-CkINmDuK.css": "redesign/assets/index-CkINmDuK.css",
     "licenses/react.txt": "redesign/licenses/react.txt",
     "licenses/react-dom.txt": "redesign/licenses/react-dom.txt",
     "licenses/scheduler.txt": "redesign/licenses/scheduler.txt",
@@ -376,6 +378,8 @@ def validate_data(directory, allow_legacy=False, *, strict=True):
     if EXECUTIVE_PREVIOUS_FILE in files:
         validate_executive_previous(read_json(files[EXECUTIVE_PREVIOUS_FILE]), metadata["collection"])
     validate_records(records, allow_legacy=allow_legacy, require_identity="feeds" in metadata["collection"])
+    if HISTORY_FILE in files:
+        validate_history(read_json(files[HISTORY_FILE]), metadata["collection"], records)
     if "flash_alert.json" in files:
         flash = read_json(files["flash_alert.json"])
         require(isinstance(flash, dict) and flash.get("is_flash") is True and flash in records,
@@ -436,6 +440,11 @@ def stage_site(source, destination, root):
         (destination / folder).mkdir(parents=True)
     copy_files(assets, destination)
     copy_files(files, destination / "data")
+    collection = read_json(files["intelligence_status.json"])["collection"]
+    (destination / "site_status.json").write_text(
+        json.dumps({"prepared_at": datetime.now(timezone.utc).isoformat(),
+                    "data_updated_at": collection.get("data_updated_at")}) + "\n", encoding="utf-8"
+    )
 
 
 def main():

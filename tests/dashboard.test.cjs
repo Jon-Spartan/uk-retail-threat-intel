@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-CTJn1fMj.js', 'assets/index-CqXbLaGh.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-qRaKaUI4.js', 'assets/index-CkINmDuK.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -57,6 +57,7 @@ async function dashboard(t, initialResponses, {checkCsp = false, clock = false, 
   const unexpected = [];
   const errors = [];
   const responses = {'data/official_updates.json': 404, 'data/press_updates.json': 404, 'data/flash_alert.json': 404,
+    'site_status.json': 404, 'data/intelligence_history.json': 404,
     'data/executive_previous.json': 404, ...initialResponses};
   if (clock) await page.clock.install();
   if (checkCsp) {
@@ -237,11 +238,11 @@ test('retail windows count distinct report IDs and Executive uses the same 30-da
   const now = Date.parse('2026-11-27T10:00:00Z');
   const register = retailRegister;
   const metrics = aggregate(register, 30, now);
-  assert.equal(metrics.incidents.length, 3);
-  assert.equal(metrics.reports.reduce((sum, [, count]) => sum + count, 0), 3);
-  assert.equal(metrics.supplyReports.length, 1);
+  assert.equal(metrics.incidents.length, 4);
+  assert.equal(metrics.reports.reduce((sum, [, count]) => sum + count, 0), 4);
+  assert.equal(metrics.supplyReports.length, 2);
   assert.equal(search(metrics.records, {view: 'payments', sort: 'updated'})[0].id, 'retail-0003');
-  assert.equal(aggregate(register, 7, now).incidents.length, 1);
+  assert.equal(aggregate(register, 7, now).incidents.length, 2);
   const executive = buildModel({now, stories: executiveStories(register), retailReviewedOn: register.reviewed_on,
     evidenceFor: () => null, safeUrl: url => url});
   assert.equal(executive.metrics[2][1], String(metrics.incidents.length));
@@ -253,13 +254,12 @@ test('Retail Centre searches locally, preserves unknowns and safely links review
   const {page, requests} = board;
   await page.clock.setFixedTime(new Date('2026-11-27T10:00:00Z'));
   await page.setViewportSize({width: 390, height: 844});
-  await page.getByText('3 distinct incident records', {exact: false}).waitFor();
+  await page.getByText('4 distinct incident records', {exact: false}).waitFor();
   assert.equal(await page.locator('#retailMetrics dd').count(), 12);
-  assert.equal(await page.locator('#retailPeriod option[value="90"]').isDisabled(), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   const before = requests.filter(request => request.url.includes('retail-intelligence.json')).length;
   await page.getByRole('button', {name: 'Supply chain', exact: true}).click();
-  await page.locator('#retailResults summary').click();
+  await page.locator('#retailResults summary').filter({hasText: 'Next'}).click();
   assert.match(await page.locator('#retailResults').innerText(), /Initial access\s+Unknown/);
   assert.equal(await page.locator('#retailResults').getByRole('link', {name: 'The Register'}).count(), 1);
   await page.getByLabel('Search records').fill('nonmatching search');
@@ -355,6 +355,53 @@ test('themed briefings render the validated pair and reject mismatched citations
   await page.reload();
   await page.getByText('Briefing validation or loading failed').waitFor();
   assert.equal(await page.getByRole('link', {name: '[S01] Public disclosure'}).count(), 0);
+  board.assertQuiet();
+});
+
+test('Executive compares new records while open, marks them seen and shows real history gaps', async t => {
+  const now = Date.parse('2026-11-27T13:00:00+00:00');
+  const stamp = '2026-11-27T12:55:00+00:00';
+  const officialName = 'data/official_updates.json';
+  const pressName = 'data/press_updates.json';
+  const retailName = 'assets/retail-intelligence.json';
+  const story = {id: 'quote-1', source: 'ncsc', title: 'Published source fixture', url: 'https://www.ncsc.gov.uk/news/example',
+    published_at: '2026-11-27T12:00:00+00:00'};
+  const official = {checked_at: stamp, sources: {ncsc: 'current'}, stories: []};
+  const dataset = structuredClone(retailRegister);
+  const board = await dashboard(t, {
+    'data/intelligence_status.json': {collection: {state: 'current', checked_at: stamp, data_updated_at: stamp, last_success_at: stamp}},
+    'data/threats.json': [], [officialName]: official, [pressName]: {checked_at: stamp, research: 'current', stories: []},
+    [retailName]: dataset,
+    'data/intelligence_history.json': {version: 1, days: [
+      {collected_at: '2026-11-25T13:00:00+00:00', severity: {CRITICAL: 1, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0}, kev: 1},
+      {collected_at: '2026-11-27T12:00:00+00:00', severity: {CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0}, kev: 0}
+    ]},
+    'site_status.json': {prepared_at: stamp, data_updated_at: '2026-11-20T11:30:00+00:00'}
+  }, {pathSuffix: '', legacy: false, clock: true});
+  const {page, responses} = board;
+  await page.clock.setFixedTime(new Date(now));
+  await page.getByText('What changed since your last visit?').waitFor();
+  await page.getByText(/No additions in the available window/).first().waitFor();
+  await page.getByText('View daily counts').click();
+  assert.match(await page.getByRole('row', {name: /2026-11-26/}).innerText(), /No complete collection/);
+  assert.deepEqual(await page.getByRole('row', {name: /2026-11-27/}).locator('td').allTextContents(), ['0','0','0','0','0','0']);
+  responses[officialName] = {...official, stories: [story]};
+  responses['data/threats.json'] = [executiveKev('10021', '2026-11-27T12:50:00+00:00')];
+  dataset.records[2].timeline.push({date: '2026-11-27', kind: 'update', publisher: 'Cleverbridge',
+    url: 'https://grow.cleverbridge.com/incident-update', summary: 'Follow-up fixture.'});
+  await page.getByRole('link', {name: 'Service Health & Exports'}).click();
+  await page.getByText('Served Pages build prepared', {exact: true}).waitFor();
+  await page.getByText(/different snapshots/).waitFor();
+  await page.getByRole('button', {name: 'Refresh intelligence'}).click();
+  await page.getByRole('link', {name: 'Executive Overview'}).click();
+  await page.getByRole('link', {name: /10021/}).first().waitFor();
+  await page.getByRole('link', {name: /Published source fixture/}).waitFor();
+  await page.getByText(/Follow-up · 27 Nov 2026/).waitFor();
+  await page.getByRole('button', {name: 'Mark as seen'}).click();
+  assert.equal(await page.getByText(/No additions in the available window/).count(), 3);
+  await page.getByRole('link', {name: 'Intelligence Briefings'}).click();
+  await page.getByText(/Source-linked briefing/).waitFor();
+  await page.getByRole('link', {name: /10021/}).waitFor();
   board.assertQuiet();
 });
 

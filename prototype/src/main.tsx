@@ -169,7 +169,7 @@ function App() {
           {!hostedPreview && <span className="prototype-label">Local prototype</span>}</div>
         <Flash snapshot={snapshot}/>
         {!current.valid && <div className="notice">This route is unavailable in the prototype. Choose a view in the navigation.</div>}
-        {current.view === 'overview' && <Executive snapshot={snapshot}/>}
+        <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
         {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
         {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}
         {current.view === 'feed' && <Feed key={current.source} snapshot={snapshot} selected={current.id} initialSource={current.source}/>}

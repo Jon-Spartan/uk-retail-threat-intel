@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react'
 import {citedTechniques, collectionState, object, recordHref, safeUrl, severity, showDate} from './data'
 import type {BriefingStatus, Period, Snapshot, Threat} from './data'
 import {Empty, External, Panel, State} from './ui'
+import {BriefingFallback} from './activity'
 
 const stackKey = 'cti_my_tech_stack'
 const dismissKey = 'dismissedFlashKeys'
@@ -186,7 +187,7 @@ export function Briefings({snapshot, period}: {snapshot: Snapshot | null; period
   }, [period, generated, validated, state, key])
   const briefing = result?.key === key ? result.value : undefined
   return <Panel title={period === 'daily' ? 'Daily intelligence briefing' : 'Weekly intelligence briefing'}
-    detail="AI-assisted selection of public-source evidence">
+    detail={briefing ? 'AI-assisted selection of public-source evidence' : undefined}>
     <nav aria-label="Briefing editions" className="inline-links">
       <a href="#/briefings/daily" aria-current={period === 'daily' ? 'page' : undefined}>Daily</a>
       <a href="#/briefings/weekly" aria-current={period === 'weekly' ? 'page' : undefined}>Weekly</a>
@@ -202,23 +203,37 @@ export function Briefings({snapshot, period}: {snapshot: Snapshot | null; period
         <External url={source.url}>{'[' + source.id + '] ' + source.publisher}</External>
       </li>)}</ul></section>
       <a href={'./data/' + period + '_briefing.json'}>Download evidence and selection JSON</a>
-    </div> : <Empty title={briefing === null ? 'Briefing validation or loading failed' : !snapshot || generated && validated ?
-      'Loading briefing evidence' : state === 'failed' ? 'Latest briefing generation or validation failed' : 'No validated briefing available'}/>}
+    </div> : <>
+      <Empty title={briefing === null ? 'Briefing validation or loading failed' : !snapshot || generated && validated ?
+        'Loading briefing evidence' : state === 'failed' ? 'Latest briefing generation or validation failed' : 'No validated AI-assisted briefing available'}/>
+      {snapshot && (briefing === null || !generated || !validated) && <BriefingFallback snapshot={snapshot} period={period}/>}
+    </>}
   </Panel>
 }
 
 export function Health({snapshot, refresh}: {snapshot: Snapshot | null; refresh: () => void}) {
   const collection = snapshot?.collection
+  const prepared = snapshot?.siteStatus
+  const mismatched = Boolean(prepared?.data_updated_at && collection?.data_updated_at && prepared.data_updated_at !== collection.data_updated_at)
   return <>
     <Panel title="Collection and validation" trailing={<button className="button" onClick={refresh}>Refresh intelligence</button>}>
       <div className="notice"><State>{collectionState(snapshot)}</State><span>Last successful collection · {showDate(collection?.last_success_at, true)} UK time</span></div>
-      <dl className="assurance"><div><dt>Daily briefing validated</dt><dd>{showDate(snapshot?.briefings.daily?.validated_at, true)}</dd></div>
+      {mismatched && <p className="notice">The build and collection timestamps refer to different snapshots. A refresh can check for a matching pair.</p>}
+      <dl className="assurance"><div><dt>Last collection attempt</dt><dd>{showDate(collection?.checked_at, true)}</dd></div>
+        <div><dt>Served Pages build prepared</dt><dd>{showDate(prepared?.prepared_at, true)}</dd></div>
+        <div><dt>Last browser check completed</dt><dd>{showDate(snapshot?.browserCheckedAt, true)}</dd></div>
+        <div><dt>Daily briefing validated</dt><dd>{showDate(snapshot?.briefings.daily?.validated_at, true)}</dd></div>
         <div><dt>Weekly briefing validated</dt><dd>{showDate(snapshot?.briefings.weekly?.validated_at, true)}</dd></div>
         <div><dt>Headline coverage</dt><dd>{snapshot?.storyCoverage || 'Unavailable'}</dd></div>
         <div><dt>Retail editorial review</dt><dd>{showDate(snapshot?.retail?.reviewed_on)}</dd></div></dl>
       <ul className="tool-list">{(Array.isArray(collection?.feeds) ? collection.feeds : [])
         .filter(feed => typeof feed?.name === 'string').map(feed => <li key={feed.name}><span>{feed.name}</span>
           <span>{feed.state === 'success' ? 'Last check succeeded' : 'Last check unavailable or failed'}</span></li>)}</ul>
+    </Panel>
+    <Panel title="Headline source checks" detail="Feed check times can advance while the newest published headline stays the same. Times are UK local.">
+      <ul className="tool-list">{snapshot?.headlineChecks.map(feed => <li key={feed.name}>
+        <span>{feed.name}</span><span>{feed.coverage} · {showDate(feed.checkedAt, true)}</span>
+      </li>)}</ul>
     </Panel>
     <Panel title="Exports and methodology" detail="Public-source report exports and evidence standards.">
       <ul className="tool-list"><li><a href="./data/threats.stix.json">STIX 2.1 report bundle</a></li><li><a href="./data/feed.xml">RSS intelligence feed</a></li>

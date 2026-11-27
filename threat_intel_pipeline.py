@@ -529,6 +529,8 @@ def save_executive_comparison(previous, previous_status, current_status, previou
 
 
 def save_collection(articles, collection_state, status, feeds=()):
+    from intelligence_history import FILENAME as HISTORY_FILE, save_history
+
     os.makedirs("data", exist_ok=True)
     now = datetime.now(timezone.utc)
     checked_at = now.isoformat()
@@ -558,6 +560,7 @@ def save_collection(articles, collection_state, status, feeds=()):
 
     export_stix_and_rss(articles, built_at=now)
     write_json(threats_path, articles)
+    save_history(Path("data") / HISTORY_FILE, status["collection"], articles)
     flash = next((article for article in articles if article.get("is_flash")), None)
     if flash:
         write_json(flash_path, flash)
