@@ -416,6 +416,12 @@ test('editorial sections keep dated source links and stay separate from KEV filt
   const retail = page.getByRole('region', {name: 'Retail watch'});
   const cyber = page.getByRole('region', {name: 'Cyber watch'});
   const nav = page.getByRole('navigation', {name: 'Dashboard views'});
+  const primaryLinks = await nav.getByRole('link').all();
+  assert.deepEqual(await nav.getByRole('link').allTextContents(), ['Executive', 'CISA KEV', 'Stories']);
+  const primaryBounds = await Promise.all(primaryLinks.map(link => link.boundingBox()));
+  assert.ok(primaryBounds.every(box => box && box.height >= 44 && box.y === primaryBounds[0].y));
+  const technicalNav = page.getByRole('navigation', {name: 'Technical views'});
+  assert.ok((await technicalNav.boundingBox()).y >= primaryBounds[0].y + primaryBounds[0].height);
   await titles(page).first().waitFor();
   const filter = page.getByRole('region', {name: 'Filter vulnerabilities'});
   await filter.waitFor();

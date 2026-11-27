@@ -42,6 +42,12 @@ body {
 .dashboard-view-link[aria-current="page"] {
   @apply border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-200;
 }
+.dashboard-view-link-primary {
+  @apply min-h-11 justify-center whitespace-nowrap border-slate-300 bg-white px-2 text-sm font-bold text-slate-800 shadow-sm hover:border-sky-500 hover:bg-sky-50 focus-visible:outline-offset-2 sm:px-3 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-sky-400 dark:hover:bg-slate-800;
+}
+.dashboard-view-link-primary[aria-current="page"] {
+  @apply border-sky-700 bg-sky-700 text-white hover:border-sky-800 hover:bg-sky-800 dark:border-sky-300 dark:bg-sky-300 dark:text-slate-950 dark:hover:border-sky-200 dark:hover:bg-sky-200;
+}
 .dashboard-anchor {
-  @apply scroll-mt-36 lg:scroll-mt-24;
+  @apply scroll-mt-44 sm:scroll-mt-36 lg:scroll-mt-24;
 }

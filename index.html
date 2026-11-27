@@ -6,7 +6,7 @@
   <title>UK Retail Cyber Threat Intelligence (CTI) Hub</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
   <script src="./assets/theme.js"></script>
-  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112603">
+  <link rel="stylesheet" href="./assets/dashboard.css?t=2026112702">
   <script src="./assets/executive.js?t=2026112603" defer></script>
   <script src="./assets/dashboard.js?t=2026112701" defer></script>
 </head>
@@ -38,11 +38,13 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <nav aria-label="Dashboard views" class="flex flex-wrap items-center gap-1.5">
-          <a data-dashboard-link="executive" href="#executive" class="dashboard-view-link">Executive</a>
-          <a id="tabFeedBtn" data-dashboard-link="kev" aria-current="page" href="#kev" class="dashboard-view-link">CISA KEV</a>
-          <a id="tabStoriesBtn" data-dashboard-link="stories" href="#stories" class="dashboard-view-link">Stories</a>
+      <div class="grid w-full grid-cols-[1fr_auto] items-center gap-2 sm:flex sm:flex-wrap lg:w-auto lg:gap-3">
+        <nav aria-label="Dashboard views" class="col-span-2 grid grid-cols-3 gap-2 sm:flex">
+          <a data-dashboard-link="executive" href="#executive" class="dashboard-view-link dashboard-view-link-primary">Executive</a>
+          <a id="tabFeedBtn" data-dashboard-link="kev" aria-current="page" href="#kev" class="dashboard-view-link dashboard-view-link-primary">CISA KEV</a>
+          <a id="tabStoriesBtn" data-dashboard-link="stories" href="#stories" class="dashboard-view-link dashboard-view-link-primary">Stories</a>
+        </nav>
+        <nav aria-label="Technical views" class="flex items-center gap-1.5 sm:border-l sm:border-slate-200 sm:pl-2 dark:sm:border-slate-800 lg:pl-3">
           <a id="tabMitreBtn" data-dashboard-link="matrix" href="#tabMitreContent" class="dashboard-view-link">
             <span class="hidden sm:inline">ATT&amp;CK Matrix</span><span class="sm:hidden">Matrix</span>
           </a>
