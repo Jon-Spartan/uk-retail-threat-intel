@@ -2,7 +2,8 @@ import {useEffect, useRef, useState} from 'react'
 import {createRoot} from 'react-dom/client'
 import {bandOrder, collectionState, hostedPreview, loadSnapshot, recordHref} from './data'
 import type {Snapshot} from './data'
-import {Executive, Feed, Radar, Retail} from './views'
+import {Executive, Radar, Retail} from './views'
+import {Feed, feedSources} from './feed'
 import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
 import {cyberWatch, Roundup} from './editorial'
 import {Icon, State} from './ui'
@@ -41,7 +42,7 @@ function route() {
   const source = params.get('source') || ''
   return {view: (valid ? path![1] : 'overview') as View, id: path?.[2], severity: bandOrder.includes(band) ? band : '',
     technique: /^T\d{4}(?:\.\d{3})?$/.test(technique) ? technique : '',
-    source: ['Press', 'Official', 'Cyber watch', 'Research'].includes(source) ? source : 'All sources', valid}
+    source: feedSources.find(kind => kind === source) ?? 'All sources', valid}
 }
 
 function Navigation({view, onNavigate}: {view: View; onNavigate?: () => void}) {
@@ -172,7 +173,7 @@ function App() {
         <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
         {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
         {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}
-        {current.view === 'feed' && <Feed key={current.source} snapshot={snapshot} selected={current.id} initialSource={current.source}/>}
+        {current.view === 'feed' && <Feed snapshot={snapshot} selected={current.id} source={current.source}/>}
         {current.view === 'mitre' && <Mitre snapshot={snapshot}/>}
         {current.view === 'briefings' && <Briefings snapshot={snapshot} period={current.id === 'weekly' ? 'weekly' : 'daily'}/>}
         {current.view === 'roundup' && <Roundup/>}

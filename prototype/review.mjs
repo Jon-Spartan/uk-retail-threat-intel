@@ -55,8 +55,9 @@ try {
       await page.getByRole('heading', {name: title, exact: true}).waitFor()
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, view + ' has page overflow')
       await page.evaluate(() => document.fonts.ready)
-      if (width === 390 && view === 'feed' && await page.locator('.report-list a').count()) {
-        await page.locator('.report-list a').first().click()
+      if (width === 390 && view === 'feed' && await page.locator('.feed-row').count()) {
+        await page.screenshot({path: 'review/feed-index-390x844.png', animations: 'disabled'})
+        await page.locator('.feed-row').first().click()
         await page.getByRole('link', {name: 'Back to reports'}).waitFor()
       }
       await page.screenshot({path: 'review/' + view + '-' + width + 'x' + height + '.png', animations: 'disabled'})

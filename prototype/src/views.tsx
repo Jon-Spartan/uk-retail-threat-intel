@@ -1,9 +1,8 @@
 import {useState} from 'react'
 import {bandOrder, citedTechniques, collectionState, lastThirty, publicLabels, recordHref, retailStale, severity, showDate} from './data'
-import type {Snapshot, Story, Threat} from './data'
+import type {Snapshot, Threat} from './data'
 import {Bars, Empty, External, Icon, Metric, Panel, State} from './ui'
 import {downloadRadar, stackMatch} from './tools'
-import {cyberWatch} from './editorial'
 import {Activity, Trend} from './activity'
 const titleCase = (value: string) => Object.hasOwn(publicLabels, value)
   ? publicLabels[value] : value.replaceAll('_', ' ').replace(/^./, first => first.toUpperCase())
@@ -126,46 +125,6 @@ export function Radar({snapshot, selected, initialSeverity, technique, stack}: {
         </tr>)}</tbody>
       </table></div> : <Empty title={snapshot?.threats ? 'No vulnerabilities match these filters' : 'Vulnerability records unavailable'}/>}
     </Panel>
-  </>
-}
-
-export function Feed({snapshot, selected, initialSource}: {snapshot: Snapshot | null; selected?: string; initialSource: string}) {
-  const [query, setQuery] = useState('')
-  const [kind, setKind] = useState(initialSource)
-  const all = (snapshot?.stories || []).concat(cyberWatch).sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
-  const stories = all.filter(story => (kind === 'All sources' || story.kind === kind) && matches(story.title + ' ' + story.source, query))
-  const story = selected ? all.find(item => item.id === selected) : stories[0]
-  return <>
-    <div className="notice"><State>{snapshot?.storyCoverage || 'Loading'}</State><span>Official publications, reviewed press links and security research</span></div>
-    <div className="reader-grid">
-      <Panel title="Reports" detail="Published source dates">
-        <div className="filterbar reader-filters"><label>Search reports<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Title or publisher"/></label>
-          <label>Source type<select value={kind} onChange={event => setKind(event.target.value)}>{['All sources', 'Official', 'Press', 'Research', 'Cyber watch'].map(value => <option key={value}>{value}</option>)}</select></label>
-        </div>
-        <p className="count" role="status">{stories.length} {stories.length === 1 ? 'report' : 'reports'}</p>
-        <ol className="report-list">{stories.map(item => <li key={item.id}><a href={recordHref('feed', item.id)} aria-current={story?.id === item.id ? 'true' : undefined}>
-          <span>{item.source} · {showDate(item.date)}</span><strong>{item.title}</strong></a></li>)}</ol>
-        {!stories.length && <Empty title="No matching reports"/>}
-      </Panel>
-      <article className={'panel reader' + (selected ? ' reader-selected' : '')}>
-        {story ? <ReadingPane story={story}/> : <Empty title="Report unavailable">Choose a report from the list.</Empty>}
-      </article>
-    </div>
-  </>
-}
-
-function ReadingPane({story}: {story: Story}) {
-  return <>
-    <a className="text-link reader-back" href="#/feed">Back to reports</a>
-    <p className="reader-label">{story.kind} · {story.source}</p>
-    <h2>{story.title}</h2><p className="muted">{showDate(story.date)}</p>
-    <div className="evidence-block"><h3>Source evidence</h3>
-      {story.summary ? <p>{story.summary}</p> :
-        <p className="muted">The reviewed record contains a title, date and source link. Read the publication for the full account.</p>}
-      {story.lesson && <p><strong>Defensive lesson · </strong>{story.lesson}</p>}
-      <External url={story.url}>Read on {story.source}</External>
-      {story.evidence && <External url={story.evidence}>Open primary disclosure</External>}
-    </div>
   </>
 }
 

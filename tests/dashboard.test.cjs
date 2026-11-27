@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-qRaKaUI4.js', 'assets/index-CkINmDuK.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-D5FcXfx2.js', 'assets/index-DXIiyd97.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -402,6 +402,45 @@ test('Executive compares new records while open, marks them seen and shows real 
   await page.getByRole('link', {name: 'Intelligence Briefings'}).click();
   await page.getByText(/Source-linked briefing/).waitFor();
   await page.getByRole('link', {name: /10021/}).waitFor();
+  board.assertQuiet();
+});
+
+test('redesigned Feed separates evidence actions and retains filters on mobile navigation', async t => {
+  const source = 'https://www.theregister.com/security/example';
+  const primary = 'https://example.invalid/public-notice';
+  const board = await dashboard(t, {
+    'data/threats.json': [], 'data/intelligence_status.json': {collection: collection('current')},
+    'data/official_updates.json': {checked_at: hoursAgo(0), sources: {ncsc: 'current'}, stories: [
+      {id: 'official-fixture', source: 'ncsc', title: 'Official guidance fixture', url: 'https://www.ncsc.gov.uk/news/example',
+        published_at: hoursAgo(1)}
+    ]},
+    'data/press_updates.json': {checked_at: hoursAgo(0), research: 'current', stories: [
+      {id: 'press-fixture', source: 'register', title: 'Supplier disclosure fixture', url: source, evidence_url: primary,
+        date: new Date().toISOString().slice(0, 10)}
+    ]}
+  }, {pathSuffix: '', hash: '#/feed', legacy: false});
+  const {page, requests} = board;
+  await page.setViewportSize({width: 390, height: 844});
+  const sources = page.getByRole('navigation', {name: 'Report sources'});
+  await page.getByRole('link', {name: /Official guidance fixture/}).waitFor();
+  const before = requests.length;
+  await sources.getByRole('link', {name: 'Press', exact: true}).click();
+  await page.getByRole('link', {name: /Official guidance fixture/}).waitFor({state: 'hidden'});
+  await page.getByRole('searchbox', {name: 'Search reports'}).fill('Supplier disclosure');
+  const results = page.getByRole('region', {name: 'Reports by publication date'});
+  assert.equal(await results.getByRole('link').count(), 1);
+  await results.getByRole('link').click();
+  await page.getByRole('heading', {name: 'Supplier disclosure fixture'}).waitFor();
+  assert.equal(await page.getByRole('link', {name: /Open primary disclosure/}).getAttribute('href'), primary);
+  assert.equal(await page.getByRole('link', {name: /Read on The Register/}).getAttribute('href'), source);
+  assert.equal(await results.isVisible(), false);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('link', {name: 'Back to reports'}).click();
+  await page.getByRole('searchbox', {name: 'Search reports'}).waitFor();
+  assert.equal(await page.getByRole('searchbox', {name: 'Search reports'}).inputValue(), 'Supplier disclosure');
+  assert.equal(await sources.getByRole('link', {name: 'Press', exact: true}).getAttribute('aria-current'), 'page');
+  assert.equal(new URL(page.url()).hash, '#/feed?source=Press');
+  assert.equal(requests.length, before);
   board.assertQuiet();
 });
 
