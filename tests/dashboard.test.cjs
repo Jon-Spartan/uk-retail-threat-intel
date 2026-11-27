@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-BroVopI3.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-DsDCmOaR.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -398,7 +398,18 @@ test('sector and AI views match headlines locally and show coverage gaps', async
     const matches = page.getByRole('link', {name: titles[index], exact: true});
     await matches.waitFor();
     assert.equal(await matches.getAttribute('href'), '#/feed/sector-' + index);
-    if (index < 3) await page.getByRole('link', {name: 'Publisher update ' + index, exact: true}).waitFor();
+    if (index < 3) {
+      const sectorReport = page.getByRole('link', {name: 'Publisher update ' + index, exact: true});
+      await sectorReport.waitFor();
+      for (const heading of ['Reporting by publisher', 'Incident trend', 'Sector intelligence register', 'Sector guidance and resources']) {
+        await page.getByRole('heading', {name: heading, exact: true}).waitFor();
+      }
+      await page.getByLabel('Source', {exact: true}).selectOption('Sector feed');
+      assert.equal(await matches.count(), 0);
+      assert.equal(await sectorReport.count(), 1);
+      await page.getByRole('searchbox', {name: 'Search sector reports'}).fill('No suitable match');
+      await page.getByText('No reports match these filters', {exact: true}).waitFor();
+    }
     assert.equal(await page.getByRole('link', {name: 'Retail bulletin', exact: true}).count(), 0);
   }
   assert.match(await page.title(), /Cyber Threat Intelligence$/);
@@ -417,6 +428,8 @@ test('sector and AI views match headlines locally and show coverage gaps', async
     await page.getByText('Headline coverage is unavailable.', {exact: true}).waitFor();
     assert.equal(await page.getByRole('link', {name: publisher, exact: true}).getAttribute('href'), url);
   }
+  await page.setViewportSize({width: 390, height: 844});
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   board.assertQuiet();
 });
 
