@@ -56,6 +56,8 @@ Open **Vulnerability Radar** to filter and export catalogue results. Open a reco
 
 Save vulnerability, story and retail records to the **Review Queue** under Workspace. Use **To review**, **Reviewed** and **Watch for updates** to organise follow-up. The queue stays in the current browser profile and clears when you delete the site’s browser data. **Watch for updates** is a manual follow-up status. Saved entries retain a link to their source if they leave the published snapshot.
 
+**Cyber Threat Intelligence** keeps the reviewed **Retail Sector** register and adds **Legal Sector**, **Finance Sector**, **Healthcare Sector**, and **AI Intelligence** headline views. These views match terms in the existing approved headline feeds, show feed coverage, and link to original sources. The executive metrics and retail priority scoring still cover UK retail.
+
 Open **Executive** for the public sector briefing. It uses the same validated vulnerability and collection status files as CISA KEV, plus the reviewed Retail Watch notes. It uses no My Stack preferences and requires no AI key. The **Priority watch** label means a current, complete snapshot includes a documented retail-relevant record scoring at least 50. **Not assessed** is shown when that condition is unsupported. This is a project monitoring label based on the available evidence.
 
 Open **Retail** for the reviewed retail intelligence register. Use the reporting period and category buttons to inspect public incidents, advisories, campaigns, supply chain and payments. Expand an entry to see unknown fields, dated evidence and defensive lessons. Search and filters run in the browser without storage or external requests. The Retail Watch highlights and Executive use the same register.

@@ -13,7 +13,7 @@ const base = '/uk-retail-threat-intel/';
 const allowedFiles = new Set(['index.html', 'classic.html', 'assets/dashboard.css', 'assets/dashboard.js', 'assets/executive.js', 'assets/theme.js',
   'assets/retail.js', 'assets/retail-intelligence.json',
   'assets/inter.woff2', 'assets/jetbrains-mono.woff2', 'favicon.ico',
-  'assets/index-D6bNSjwg.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
+  'assets/index-DoaQSFhX.js', 'assets/index-Bm240rOB.css', 'fonts/inter.woff2', 'fonts/jetbrains-mono.woff2']);
 const legacySource = new Map(['dashboard.css', 'dashboard.js', 'executive.js', 'theme.js', 'retail.js', 'inter.woff2',
   'jetbrains-mono.woff2'].map(name => ['assets/' + name, 'assets/' + name]));
 legacySource.set('classic.html', 'index.html');
@@ -372,6 +372,35 @@ test('CVE detail shows dated evidence and the review queue keeps records and sta
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await retained.getByRole('button', {name: 'Remove ' + item.title}).click();
   await retained.waitFor({state: 'detached'});
+  board.assertQuiet();
+});
+
+test('sector and AI views match headlines locally and show coverage gaps', async t => {
+  const titles = ['Law firm reports cyber incident', 'Banking security advisory', 'Hospital reports an outage',
+    'Guidance on prompt injection', 'Retail bulletin'];
+  const board = await dashboard(t, {
+    'data/threats.json': [],
+    'data/intelligence_status.json': {collection: collection('current')},
+    'data/official_updates.json': {stories: titles.map((title, index) => ({id: 'sector-' + index,
+      title, source: 'ncsc', url: sourceUrl, published_at: hoursAgo(index)}))}
+  }, {pathSuffix: '', hash: '#/legal', legacy: false});
+  const {page} = board;
+  const pages = ['Legal Sector', 'Finance Sector', 'Healthcare Sector', 'AI Intelligence'];
+  for (const [index, label] of pages.entries()) {
+    await page.getByRole('link', {name: label, exact: true}).click();
+    await page.getByRole('heading', {name: label, exact: true}).waitFor();
+    const matches = page.getByRole('link', {name: titles[index], exact: true});
+    await matches.waitFor();
+    assert.equal(await matches.getAttribute('href'), '#/feed/sector-' + index);
+    assert.equal(await page.getByRole('link', {name: 'Retail bulletin', exact: true}).count(), 0);
+  }
+  assert.match(await page.title(), /Cyber Threat Intelligence$/);
+  await page.getByRole('link', {name: 'Retail Sector', exact: true}).click();
+  await page.getByRole('heading', {name: 'Retail Intelligence', exact: true}).waitFor();
+  board.responses['data/official_updates.json'] = 404;
+  await page.getByRole('link', {name: 'AI Intelligence', exact: true}).click();
+  await page.reload();
+  await page.getByText('Headline coverage is unavailable.', {exact: true}).waitFor();
   board.assertQuiet();
 });
 

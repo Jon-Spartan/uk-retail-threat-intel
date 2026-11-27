@@ -7,6 +7,7 @@ import {Feed, feedSources} from './feed'
 import {Briefings, Flash, Health, Mitre, MyStack, useMyStack} from './tools'
 import {cyberWatch, Roundup} from './editorial'
 import {ReviewQueueProvider, ReviewQueueView} from './reviewQueue'
+import {TopicWatch, watchTopics} from './topicWatch'
 import {Icon, State} from './ui'
 import './style.css'
 
@@ -14,7 +15,11 @@ const views = {
   overview: {title: 'Executive Overview', description: 'Monitor the public UK retail cyber threat landscape.', icon: 'overview', group: 'Overview'},
   feed: {title: 'Intelligence Feed', description: 'Find security reporting and verify it against the original sources.', icon: 'feed', group: 'Explore'},
   radar: {title: 'Vulnerability Radar', description: 'Investigate public CVEs and compare documented evidence.', icon: 'radar', group: 'Explore'},
-  retail: {title: 'Retail Intelligence', description: 'Explore reviewed incidents and guidance relevant to retail.', icon: 'retail', group: 'Retail sector'},
+  retail: {title: 'Retail Intelligence', description: 'Explore reviewed incidents and guidance relevant to retail.', icon: 'retail', group: 'Sectors'},
+  legal: {title: 'Legal Sector', description: 'Explore public cyber reporting about law firms and legal services.', icon: 'feed', group: 'Sectors'},
+  finance: {title: 'Finance Sector', description: 'Explore public cyber reporting about banking, insurance and financial services.', icon: 'feed', group: 'Sectors'},
+  healthcare: {title: 'Healthcare Sector', description: 'Explore public cyber reporting about healthcare providers and services.', icon: 'feed', group: 'Sectors'},
+  ai: {title: 'AI Intelligence', description: 'Follow public reporting about AI security, misuse and defensive guidance.', icon: 'radar', group: 'Explore'},
   mitre: {title: 'MITRE ATT&CK', description: 'Explore techniques explicitly cited in public records.', icon: 'radar', group: 'Explore'},
   briefings: {title: 'Intelligence Briefings', description: 'Read published analysis with traceable evidence.', icon: 'feed', group: 'Overview'},
   stack: {title: 'My Stack', description: 'Match public evidence against technology preferences saved in this browser.', icon: 'retail', group: 'Workspace'},
@@ -49,17 +54,17 @@ function route() {
 
 function Navigation({view, onNavigate}: {view: View; onNavigate?: () => void}) {
   return <nav className="navigation" aria-label="Intelligence views">
-    {(['Overview', 'Explore', 'Retail sector', 'Workspace'] as const).map(group => <div key={group} className="nav-group">
+    {(['Overview', 'Explore', 'Sectors', 'Workspace'] as const).map(group => <div key={group} className="nav-group">
       <p>{group}</p>{(Object.keys(views) as View[]).filter(key => key !== 'roundup' && views[key].group === group).map(key =>
         <a key={key} href={'#/' + key} aria-current={key === view ? 'page' : undefined} onClick={onNavigate}>
-          <Icon name={views[key].icon}/><span>{views[key].title}</span>
+          <Icon name={views[key].icon}/><span>{key === 'retail' ? 'Retail Sector' : views[key].title}</span>
         </a>)}</div>)}
   </nav>
 }
 
 function Brand() {
   return <a className="brand" href="#/overview"><span className="brand-mark"><Icon name="shield" size={20}/></span>
-    <span><strong>UK Retail CTI</strong><small>Threat intelligence</small></span></a>
+    <span><strong>Cyber Threat Intelligence</strong></span></a>
 }
 
 function SearchDialog({dialog, snapshot}: {dialog: React.RefObject<HTMLDialogElement | null>; snapshot: Snapshot | null}) {
@@ -134,7 +139,7 @@ function App() {
     return () => window.removeEventListener('hashchange', update)
   }, [])
   useEffect(() => {
-    document.title = views[current.view].title + ' · UK Retail CTI'
+    document.title = views[current.view].title + ' · Cyber Threat Intelligence'
     if (shouldFocus.current) {
       window.scrollTo(0, 0)
       heading.current?.focus({preventScroll: true})
@@ -174,6 +179,8 @@ function App() {
         {!current.valid && <div className="notice">This route is unavailable in the prototype. Choose a view in the navigation.</div>}
         <div className="overview-surface" hidden={current.view !== 'overview'}><Executive snapshot={snapshot}/></div>
         {current.view === 'retail' && <Retail snapshot={snapshot} selected={current.id}/>}
+        {(current.view === 'legal' || current.view === 'finance' || current.view === 'healthcare' || current.view === 'ai') &&
+          <TopicWatch topic={watchTopics[current.view]} snapshot={snapshot}/>}
         {current.view === 'radar' && <Radar snapshot={snapshot} selected={current.id} initialSeverity={current.severity} technique={current.technique} stack={stack}/>}
         {current.view === 'feed' && <Feed snapshot={snapshot} selected={current.id} source={current.source}/>}
         {current.view === 'mitre' && <Mitre snapshot={snapshot}/>}
